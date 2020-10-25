@@ -1,3 +1,6 @@
+import torch.nn as nn
+import numpy as np
+
 class MarkovKernel(nn.Module):
     # Simple neural network for markov kernel
     def __init__(self, hidden_size):
