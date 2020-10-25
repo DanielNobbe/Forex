@@ -1,0 +1,15 @@
+name: forex
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.8
+  - notebook
+  - pandas
+  - matplotlib
+  - requests
+  - pip
+  - pip:
+    - oandapyV20
+prefix: /home/daniel/anaconda3/envs/forex
+
