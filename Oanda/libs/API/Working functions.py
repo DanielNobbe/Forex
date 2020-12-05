@@ -14,8 +14,6 @@ def ReadableOutput(output, sort_keys=True, indent = 4, separators=(',', ': ')):
 def CallableFunctions(Class):
     return [print(func) for func in dir(Class) if callable(getattr(Class, func, __doc__))]
 
-CallableFunctions(Trader)
-
 # def DictionaryCheck():
 #     print(ReadableOutput(check.AccountList()))
     
