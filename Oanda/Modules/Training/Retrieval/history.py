@@ -35,16 +35,15 @@ class CandleStickValues():
 
     def __init__(self, create_key, open, high, low, close):
         assert (create_key == CandleStickValues.__create_key), "Don't use the normal init function!"
-        self.opens = []
-        self.highs = []
-        self.lows = []
-        self.closes = []
+        self.opens = open
+        self.highs = high
+        self.lows = low
+        self.closes = close
     
     @classmethod
     def from_lists(cls, open, high, low, close):
         assert (isinstance(open, list) and isinstance(high, list) 
             and isinstance(low, list) and isinstance(close, list)), "Initilization inputs for CandleStickValues object must all be lists"
-
         return CandleStickValues(cls.__create_key, open, high, low, close)
     
     @classmethod
@@ -91,7 +90,7 @@ class InstrumentSeries():
 
         obj = cls.__new__(cls)
         super(InstrumentSeries, obj).__init__()
-        obj.values = CandleStickValues.from_lists(open, high, low, close) 
+        obj.values = CandleStickValues.from_lists(open, high, low, close)
         obj.times = times
         obj.volumes = volumes
         obj.completes = completes
@@ -190,7 +189,7 @@ def split_time(start_time, end_time, number):
 # TODO: Create function that handles granularity (requires converting granularity to count)
         # We receive granularity in the request though, might just use that one
 def retrieve(instrument, start_time, granularity, count, real_account = False, 
-    series_obj = None):
+    series_obj = None, inside=False):
     """
     Retrieve instrument values for a time period between
     start_time and end_time, with count intervals.
@@ -221,9 +220,9 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
             else:
                 next_count = count_left
             print("start time: ", start_time)
-            with open(os.devnull, 'w') as sys.stdout:
-                series_obj, end_time = retrieve(instrument, start_time, granularity,
-                                            next_count, series_obj = series_obj)
+            # with open(os.devnull, 'w') as sys.stdout:
+            series_obj, end_time = retrieve(instrument, start_time, granularity,
+                                        next_count, series_obj=series_obj, inside=True)
             
             # count_thus_far += next_count
             count_left -= next_count
@@ -231,7 +230,8 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
                 break
             start_time = end_time.timestamp() # Convert to unix time, which works too
         if len(series_obj.times) < count:
-            print(f"Specified count not reached! Only {len(series_obj.times)}/{count} samples available.")
+            if not inside:
+                print(f"Specified count not reached! Only {len(series_obj.times)}/{count} samples available.")
 
         return series_obj, end_time
 
@@ -261,24 +261,34 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
     lows = [float(candle['mid']['l']) for candle in rv['candles']]
     opens = [float(candle['mid']['o']) for candle in rv['candles']]
 
-
     volumes = [candle['volume'] for candle in rv['candles']] 
     completes = [candle['complete'] for candle in rv['candles']] 
     timestamps = [to_datetime(candle['time']) for candle in rv['candles']] 
     
-
+    
     if series_obj is None:
+        # print("A0: ", closes)
         series_obj = InstrumentSeries.from_lists(opens, highs, lows, closes, timestamps,
                                                  volumes, completes)
         if len(series_obj.times) < count:
-            print(f"Specified count not reached! Only {len(series_obj.times)}/{count} samples available.")
+            if not inside:
+                print(f"Specified count not reached! Only {len(series_obj.times)}/{count} samples available.")
             return series_obj, False
+        
         return series_obj, timestamps[-1]
     else:
         series_obj.extend(opens, highs, lows, closes, timestamps, volumes, completes)
         return series_obj, timestamps[-1]
 
-
+def download_history(instrument, start_time, granularity, count):
+    max_tries = 3
+    for i in range(max_tries):
+        try:
+            series_obj, _ = retrieve(instrument, start_time, granularity, count)
+            return series_obj
+        except V20Error as err:
+            print("Failed to retrieve data. Error: ", err)
+    print("Finished retrieval.")
 
 
 if __name__ == "__main__":
@@ -288,12 +298,6 @@ if __name__ == "__main__":
     # end_time = "2020-10-25"
     granularity = "H3"
     count = 6000
-    max_tries = 3
-
-    for i in range(max_tries):
-        try:
-            series_obj, _ = retrieve(instrument, start_time, granularity, count)
-            break
-        except V20Error as err:
-            print("Failed to retrieve data. Error: ", err)
-    print("Finished retrieval.")
+    
+    download_history(instrument, start_time, granularity, count)
+    

@@ -3,7 +3,7 @@ import numpy as np
 
 class MarkovKernel(nn.Module):
     # Simple neural network for markov kernel
-    def __init__(self, hidden_size):
+    def __init__(self, hidden_size, output_size, regression=True):
         super(MarkovKernel, self).__init__()
         layer_list = [
             nn.Linear(1, hidden_size[0]), 
@@ -13,8 +13,10 @@ class MarkovKernel(nn.Module):
             hidden_size[hidden_layer_index]  ) ) # take in_features out_features into account
           layer_list.append( nn.Tanh() ) 
         
-        layer_list.append( nn.Linear(hidden_size[-1],  3 ) )
-        layer_list.append(nn.Softmax())
+        layer_list.append( nn.Linear(hidden_size[-1],  output_size ) )
+
+        if not regression:
+          layer_list.append(nn.Softmax())
         
         self.model = nn.Sequential( *layer_list ) #Unpacks list for sequential
         
