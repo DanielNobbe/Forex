@@ -18,6 +18,9 @@ class MarkovKernel(nn.Module):
         
         self.model = nn.Sequential( *layer_list ) #Unpacks list for sequential
         
+    def __str__(self):
+      return "First order Markov Kernel model"
+    
     def forward(self, value):
         classification = self.model(value)
         return classification
