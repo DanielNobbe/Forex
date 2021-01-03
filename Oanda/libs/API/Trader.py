@@ -1,7 +1,8 @@
-' Get the class intergration correct '
+''' 
+class Trader sends commands to Oanda to trad 
+'''
 
 class Trader:
-    """test"""
 
     def __init__(self, access_token):
         self.access_token = access_token
@@ -13,6 +14,22 @@ class Trader:
        
     def Create(self, accountID, data):
         'It creates an order based on data'
+        
+        # data = {
+        #     "order": {
+        #         "price": "1.2",
+        #         "stopLossOnFill": {
+        #             "timeInForce": "GTC",
+        #             "price": "1.22"
+        #             },
+        #         "timeInForce": "GTC",
+        #         "instrument": "EUR_USD",
+        #         "units": "-100",
+        #         "type": "LIMIT",
+        #         "positionFill": "DEFAULT"
+        #         }
+        #     }
+        
         self.OrdersOrderCreate(accountID, data)
         print('Create order succesful')
        
