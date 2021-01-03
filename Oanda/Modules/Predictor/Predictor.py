@@ -9,10 +9,13 @@ import numpy as np
 
 #TODO: Modify default values
 class Predictor():
+    # TODO: Modify this to deal with higher numbers of input, by defining 
+    # object-specific input retrieval
     def __init__(self, model, prediction_time = 12, pretrained_path=None):
         self.prediction_time = prediction_time # Hrs in the future
         self.model_type = str(model)
         self.model = model
+        model.eval()
 
         if pretrained_path is not None:
             model.load_state_dict(torch.load(pretrained_path)) # Loads pretrained model
@@ -23,6 +26,11 @@ class Predictor():
             input = self.gather_input()
         elif len(args) == 2:
             self, input = args
+            if not isinstance(input, torch.Tensor):
+                if not isinstance(input, list):
+                    input = [float(input)]
+                # input should now be a list of one input value
+                input = torch.tensor(input)
 
         prediction = self.model.forward(input).detach().numpy()
         return prediction
