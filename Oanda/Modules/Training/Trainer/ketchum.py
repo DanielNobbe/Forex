@@ -55,13 +55,13 @@ def evaluate(val_dataloader, model, loss_fn, test=False):
     return accuracy
     # print([direction == target_direction for direction, target_direction in zip(directions, target_directions)])
 
-def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, loss_fn, no_epochs):
+def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, loss_fn, no_epochs, min_epochs, save_path):
     losses = []
     final_losses = []
     val_accuracy = 0 
     missed_steps = 0 
     for epoch in range(no_epochs):
-        if missed_steps > 1 and val_accuracy > 0.9:
+        if missed_steps > 1 and val_accuracy > 0.9 and epoch>min_epochs:
             break
         for index, (input, target) in enumerate(train_dataloader):
 
@@ -88,11 +88,16 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
                         val_accuracy = new_accuracy
                     else:
                         missed_steps += 1
-                        if missed_steps > 1 and val_accuracy > 0.9:
+                        if missed_steps > 1 and val_accuracy > 0.9 and epoch>min_epochs:
                             break
     test_acc = evaluate(test_dataloader, model, loss_fn, test=True)
+
+    torch.save(model.state_dict(), save_path)
+
     print(f"Max loss is {max(losses)}, mean loss is {np.mean(losses)}")
     # print(f"Max final loss is {max(final_losses)}, mean loss is {np.mean(final_losses)}")
+
+# def 
 
 def main():
     """ Main function for training.
@@ -107,7 +112,8 @@ def main():
     Let's start with immediate (next timestep) value and uncertainty
     How do we do uncertainty though?
     """
-    model = markov_kernel_1n.MarkovKernel([8], 1) # Example
+    hidden_sizes = [8]
+    model = markov_kernel_1n.MarkovKernel(hidden_sizes, 1) # Example
 ####################################
     # TODO: Configuration, should be somewhere else 
     instrument = "EUR_USD"
@@ -120,22 +126,28 @@ def main():
 
     history = retrieval.history.download_history(instrument, 
                                 start_time, granularity, count)
+    random = False
+    train_loader, val_loader, test_loader = retrieval.build_dataset(history, val_split=0.4, test_split=0.1, random=random)
 
-    train_set, val_set, test_set = retrieval.build_dataset(history, val_split=0.4, test_split=0.1)
-
-    train_dataloader = DataLoader(train_set, batch_size=1, # Larger batch size not yet implemented
-                        shuffle=True, num_workers=0)
-    val_dataloader = DataLoader(val_set, batch_size=1, # Larger batch size not yet implemented
-                        shuffle=True, num_workers=0)
-    test_dataloader = DataLoader(test_set, batch_size=1, # Larger batch size not yet implemented
-                        shuffle=True, num_workers=0)
+    # train_dataloader = DataLoader(train_set, batch_size=1, # Larger batch size not yet implemented
+    #                     shuffle=True, num_workers=0)
+    # val_dataloader = DataLoader(val_set, batch_size=1, # Larger batch size not yet implemented
+    #                     shuffle=True, num_workers=0)
+    # test_dataloader = DataLoader(test_set, batch_size=1, # Larger batch size not yet implemented
+    #                     shuffle=True, num_workers=0)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     # loss_fn = nn.MSELoss() # TODO: Move this into model definition?
     loss_fn = nn.L1Loss()
     no_epochs = 200
+    min_epochs = 20
+    # os.makedirs("")
+    for i in range(1000):
+        # Sets save_path as the first free slot in the pretrained models folder
+        save_path = f"Pre-trained Models/markov1n_{hidden_sizes}_{granularity}_i{i}.pt"
+        if not os.path.isfile(save_path):
+            break
 
-    train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, loss_fn, no_epochs)
-    # TODO: Implement early stopping
+    train(model, train_loader, val_loader, test_loader, optimizer, loss_fn, no_epochs, min_epochs, save_path)
 
 
 
