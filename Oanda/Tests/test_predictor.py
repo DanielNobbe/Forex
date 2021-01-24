@@ -33,6 +33,7 @@ def Test(inputt):
     predictor = Predictor(model, prediction_time=24, pretrained_path=pt_path)
 
     print("dt: ", predictor.model.dt_settings)
+    print("model notes: ", predictor.model.notes)
     input = torch.tensor([1.08, 1.09])
     prediction = predictor(input)
     print(f"Input: {input} - prediction: {prediction}")

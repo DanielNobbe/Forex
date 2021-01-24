@@ -97,7 +97,9 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
                             break
     test_acc = evaluate(test_dataloader, model, loss_fn, test=True)
 
-    save_dict = {'state_dict': model.state_dict(), 'dt_settings': model.dt_settings}
+    notes = ''
+
+    save_dict = {'state_dict': model.state_dict(), 'dt_settings': model.dt_settings, 'notes': notes}
 
     torch.save(save_dict, save_path)
 

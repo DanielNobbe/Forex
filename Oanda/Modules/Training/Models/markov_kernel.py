@@ -37,6 +37,7 @@ class MarkovKernel(nn.Module):
         self.model = nn.Sequential( *layer_list ) #Unpacks list for sequential
         
         self.dt_settings = dt_settings
+        self.notes = ''
         
     def __str__(self):
       return f"{make_ordinal(self.input_size)} order Markov Kernel model"
