@@ -396,6 +396,7 @@ def retrieve_training_data(
     dt = [ 2*gran_to_sec['D'], gran_to_sec['D']  ], # time before target in seconds to return values for
     only_close = True
         ):
+        # TODO: Make the offsets 'soft', so it does not have to be exactly dt values
 
         cache = retrieve_cache(args, download=True)
 
