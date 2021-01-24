@@ -82,7 +82,7 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
             optimizer.step()
 
             if index % 50 == 0:
-                print(f"Step {epoch}.{index} - Loss: {loss} - prediction {output.item()} - input {input.item()}, target {target.item()}")
+                print(f"Step {epoch}.{index} - Loss: {loss} - prediction {output.item()} - input {input}, target {target.item()}")
                 if index % 100 == 0:
                     new_accuracy = evaluate(val_dataloader, model, loss_fn)
                     if new_accuracy > val_accuracy:
@@ -100,7 +100,7 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
 
 # def 
 
-def main():
+def misty():
     """ Main function for training.
     Steps to take:
     1. Init model
@@ -116,19 +116,22 @@ def main():
     hidden_sizes = [8]
     model = markov_kernel_1n.MarkovKernel(hidden_sizes, 1) # Example
 ####################################
-    # TODO: Configuration, should be somewhere else 
-    instrument = "EUR_USD"
-    start_time = "2016-01-01"
+    # TODO: Add the value offsets to this
+    args = retrieval.HistoryArgs()
+    args.instrument = "EUR_USD"
+    args.start_time = "2016-01-01"
     # end_time = "2020-10-25"
     # granularity = "H3"
-    granularity = "D"
-    count = 1500
+    args.granularity = "M1" # Granularity to retrieve data with
+    args.max_count = 10000
 ####################################
 
-    history = retrieval.history.download_history(instrument, 
-                                start_time, granularity, count)
+    # history = retrieval.history.download_history(instrument, 
+    #                             start_time, granularity, count)
+    dt = [retrieval.gran_to_sec['D']]
+    inputs, targets = retrieval.history.retrieve_training_data(args, dt, only_close=True)
     random = False
-    train_loader, val_loader, test_loader = retrieval.build_simple_dataset(history, val_split=0.4, test_split=0.1, random=random)
+    train_loader, val_loader, test_loader = retrieval.build_dataset(inputs, targets, val_split=0.4, test_split=0.1, random=random)
 
     # train_dataloader = DataLoader(train_set, batch_size=1, # Larger batch size not yet implemented
     #                     shuffle=True, num_workers=0)
@@ -144,7 +147,7 @@ def main():
     # os.makedirs("")
     for i in range(1000):
         # Sets save_path as the first free slot in the pretrained models folder
-        save_path = f"Pre-trained Models/markov1n_{hidden_sizes}_{granularity}_i{i}.pt"
+        save_path = f"Pre-trained Models/markov1n_{hidden_sizes}_{args.granularity}_i{i}.pt"
         if not os.path.isfile(save_path):
             break
 
