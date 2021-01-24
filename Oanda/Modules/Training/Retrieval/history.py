@@ -245,6 +245,8 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
             can also be 'YYYY-MM-DD' for dates.
         end_time (string): end time in same format as start_time
         count (int): number of samples to retrieve
+
+    TODO: What is inside for? Is this not captured with series_obj being None?
     """
 
     # Maximum count is 5000
@@ -257,7 +259,6 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
         count_left = count
         while count_left > 0:
             # Make sure that exactly count samples are retrieved
-            print(f'Downloading. Samples left {count_left}\r', end="")
             if count_left > MAX_COUNT_PER_REQUEST:
                 next_count = MAX_COUNT_PER_REQUEST
             else:
@@ -266,6 +267,7 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
             series_obj, end_time = retrieve(instrument, start_time, granularity,
                                         next_count, series_obj=series_obj, inside=True)
             
+            print(f'Downloading. Samples left {count_left}. Timestamp: {end_time}\r', end="")
             # count_thus_far += next_count
             count_left -= next_count
             if end_time == False:
@@ -305,7 +307,6 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
     completes = [candle['complete'] for candle in rv['candles']] 
     timestamps = [to_datetime(candle['time']) for candle in rv['candles']] 
     
-    
     if series_obj is None:
         series_obj = InstrumentSeries.from_lists(opens, highs, lows, closes, timestamps,
                                                  volumes, completes)
@@ -317,7 +318,10 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
         return series_obj, timestamps[-1]
     else:
         series_obj.extend(opens, highs, lows, closes, timestamps, volumes, completes)
-        return series_obj, timestamps[-1]
+        if len(closes) < count and inside:
+            return series_obj, False
+        else:
+            return series_obj, timestamps[-1]
 
 def download_history(instrument, start_time, granularity, count):
     max_tries = 3
@@ -431,10 +435,11 @@ def test():
     args.instrument = "EUR_USD"
     args.start_time = "2016-01-01"
     args.granularity = "M1"
-    args.max_count = 10000
+    args.max_count = 1e9
 
-    values, targets = retrieve_training_data(args, only_close=True)
-    print(values)
+    cache = retrieve_cache(args, download=True)
+
+    # values, targets = retrieve_training_data(args, only_close=True)
     # we're going to retrieve a large amount of data here,
     # using a small granularity. Then, we can use this data to split
     # into larger-granularity data with certain offsets.
