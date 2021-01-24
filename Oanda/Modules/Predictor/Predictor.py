@@ -18,7 +18,10 @@ class Predictor():
         model.eval()
 
         if pretrained_path is not None:
-            model.load_state_dict(torch.load(pretrained_path)) # Loads pretrained model
+            loaded_dict = torch.load(pretrained_path)
+            model.load_state_dict(loaded_dict['state_dict']) # Loads pretrained model
+            model.dt_settings = loaded_dict['dt_settings']
+            model.notes = loaded_dict['notes']
         
     def predict(*args): # Input is model dependent
         if len(args) == 1:

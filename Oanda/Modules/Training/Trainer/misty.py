@@ -17,6 +17,10 @@ from pdb import set_trace
 
 
 def evaluate(val_dataloader, model, loss_fn, test=False):
+    """
+    NOTE: Last value in input should be most recent
+    TODO: Make this work for batched inputs
+    """
     losses = []
     accuracies = []
     # directions = []
@@ -30,9 +34,9 @@ def evaluate(val_dataloader, model, loss_fn, test=False):
         # The direction it should have is target - input
         # The direction it has is target - output
         # These should be the same
-        target_direction = target - input
+        target_direction = target - input[0,-1]
         target_direction /= torch.abs(target_direction)
-        if target == input:
+        if target == input[0,-1]:
             target_direction = torch.tensor([0])
 
         direction = target - output
@@ -93,7 +97,11 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
                             break
     test_acc = evaluate(test_dataloader, model, loss_fn, test=True)
 
-    torch.save(model.state_dict(), save_path)
+    notes = ''
+
+    save_dict = {'state_dict': model.state_dict(), 'dt_settings': model.dt_settings, 'notes': notes}
+
+    torch.save(save_dict, save_path)
 
     print(f"Max loss is {max(losses)}, mean loss is {np.mean(losses)}")
     # print(f"Max final loss is {max(final_losses)}, mean loss is {np.mean(final_losses)}")
@@ -113,8 +121,6 @@ def misty():
     Let's start with immediate (next timestep) value and uncertainty
     How do we do uncertainty though?
     """
-    hidden_sizes = [8]
-    model = markov_kernel_1n.MarkovKernel(hidden_sizes, 1) # Example
 ####################################
     # TODO: Add the value offsets to this
     args = retrieval.HistoryArgs()
@@ -128,11 +134,15 @@ def misty():
 
     # history = retrieval.history.download_history(instrument, 
     #                             start_time, granularity, count)
-    dt = [retrieval.gran_to_sec['D']]
+    dt = [2*retrieval.gran_to_sec['D'], retrieval.gran_to_sec['D']]
     inputs, targets = retrieval.history.retrieve_training_data(args, dt, only_close=True)
     random = False
     train_loader, val_loader, test_loader = retrieval.build_dataset(inputs, targets, val_split=0.4, test_split=0.1, random=random)
 
+    # Define model
+    hidden_sizes = [8]
+    markov_order = 2
+    model = markov_kernel.MarkovKernel(markov_order, hidden_sizes, 1, dt_settings = dt) # Example
     # train_dataloader = DataLoader(train_set, batch_size=1, # Larger batch size not yet implemented
     #                     shuffle=True, num_workers=0)
     # val_dataloader = DataLoader(val_set, batch_size=1, # Larger batch size not yet implemented
@@ -142,12 +152,12 @@ def misty():
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     # loss_fn = nn.MSELoss() # TODO: Move this into model definition?
     loss_fn = nn.L1Loss()
-    no_epochs = 200
-    min_epochs = 20
+    no_epochs = 2
+    min_epochs = 20 # For early stopping
     # os.makedirs("")
     for i in range(1000):
         # Sets save_path as the first free slot in the pretrained models folder
-        save_path = f"Pre-trained Models/markov1n_{hidden_sizes}_{args.granularity}_i{i}.pt"
+        save_path = f"Pre-trained Models/markov{markov_order}n_{hidden_sizes}_{args.granularity}_i{i}.pt"
         if not os.path.isfile(save_path):
             break
 
