@@ -23,27 +23,24 @@ class Predictor():
             model.dt_settings = loaded_dict['dt_settings']
             model.notes = loaded_dict['notes']
         
-    def predict(*args): # Input is model dependent
-        if len(args) == 1:
-            self = args
-            input = self.gather_input()
-        elif len(args) == 2:
-            self, input = args
-            if not isinstance(input, torch.Tensor):
-                if not isinstance(input, list):
-                    input = [float(input)]
-                # input should now be a list of one input value
-                input = torch.tensor(input)
+    def predict_with_input(self, input): # Input is model dependent
+        if not isinstance(input, torch.Tensor):
+            if not isinstance(input, list):
+                input = [float(input)]
+            # input should now be a list of one input value
+            input = torch.tensor(input)
 
         prediction = self.model.forward(input).detach().numpy()
+        return prediction
+    
+    def predict(self):
+        # Automatically retrieves relevant samples from remote
+        prediction = self.model.infer().detach().numpy()
         return prediction
     
     def __call__(self, *args):
         return self.predict(*args)
 
-    def gather_input(self):
-        # Must be implemented in inherited class
-        raise NotImplementedError
 
 
     
