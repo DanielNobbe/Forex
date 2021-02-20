@@ -9,6 +9,10 @@ import pickle
 
 import re
 import os, sys
+import torch
+# from collections import OrderedDict
+from itertools import islice
+from sortedcontainers import SortedDict
 """ 
 Functions for retrieving historical data from OANDA API
 
@@ -128,7 +132,7 @@ class InstrumentSeries():
         obj.times = times
         obj.volumes = volumes
         obj.completes = completes
-        obj.timedict = {time: value for time, value in zip(times,[tupl for tupl in zip(opens,highs,lows,closes)])} 
+        obj.timedict = SortedDict({time: value for time, value in zip(times,[tupl for tupl in zip(opens,highs,lows,closes)])})
         #TODO: modify this to contain an object for each candlestick 
         return obj
     
@@ -140,7 +144,7 @@ class InstrumentSeries():
         obj.times = []
         obj.volumes = []
         obj.completes = []
-        obj.timedict = []
+        obj.timedict = SortedDict()
         return obj
 
     def append(self, open, high, low, close, time, volume, complete):
@@ -162,6 +166,13 @@ class InstrumentSeries():
     def __len__(self):
         return len(self.times)
 
+def sd_closest(sorted_dict, key):
+    "Return closest key in `sorted_dict` to given `key`."
+    # from https://stackoverflow.com/a/22997000
+    assert len(sorted_dict) > 0
+    keys = list(islice(sorted_dict.irange(minimum=key), 1))
+    keys.extend(islice(sorted_dict.irange(maximum=key, reverse=True), 1))
+    return min(keys, key=lambda k: abs(key - k))
 
 def to_datetime(t, date_only = False):
     """
@@ -172,6 +183,13 @@ def to_datetime(t, date_only = False):
         return datetime.datetime.strptime(t[0:-4], "%Y-%m-%dT%H:%M:%S.%f") 
     else:
         return datetime.datetime.strptime(t, "%Y-%m-%d")
+def to_unix(t):
+    time = datetime.datetime.strptime(t[0:-4], "%Y-%m-%dT%H:%M:%S.%f")
+    return time.timestamp()
+
+def unix_to_date(t):
+    time = datetime.datetime.fromtimestamp(t)
+    return time
 
 def ceildiv(a, b):
     # Divide two numbers and round the result up to the closest integer
@@ -267,12 +285,13 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
             series_obj, end_time = retrieve(instrument, start_time, granularity,
                                         next_count, series_obj=series_obj, inside=True)
             
-            print(f'Downloading. Samples left {count_left}. Timestamp: {end_time}\r', end="")
+            print(f'Downloading. Samples left {count_left}. Timestamp: {unix_to_date(end_time)}\r', end="")
             # count_thus_far += next_count
+            
             count_left -= next_count
             if end_time == False:
                 break
-            start_time = end_time.timestamp() # Convert to unix time, which works too
+            start_time = end_time # Already in unix time
         if len(series_obj.times) < count:
             if not inside:
                 print(f"Specified count not reached! Only {len(series_obj.times)}/{count} samples available.")
@@ -305,7 +324,7 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
 
     volumes = [candle['volume'] for candle in rv['candles']] 
     completes = [candle['complete'] for candle in rv['candles']] 
-    timestamps = [to_datetime(candle['time']) for candle in rv['candles']] 
+    timestamps = [to_unix(candle['time']) for candle in rv['candles']] 
     
     if series_obj is None:
         series_obj = InstrumentSeries.from_lists(opens, highs, lows, closes, timestamps,
@@ -394,20 +413,66 @@ def subtract_time(time, subtraction):
     new_time = int(time.timestamp()) - subtraction
     return datetime.datetime.fromtimestamp(new_time)
 
+def retrieve_inference_data(
+    instrument,
+    dt = [ 2*gran_to_sec['D'], gran_to_sec['D']  ], # time before target in seconds to return values for
+    soft_retrieve = True,
+    soft_margin = 3000,
+    only_close = True,
+    ):
+    # Same as for training, except only one sequence (and full one at that)
+    # and no target value. Last dt should be now
+    now = datetime.datetime.now().timestamp()
+    earliest_time = now - (dt[0] - dt[-1]) # First dt should be earliest, final dt should be latest
+
+    args = HistoryArgs()
+    args.instrument = instrument
+    args.start_time = earliest_time
+    args.granularity = 'S5' # Shortest option
+    args.max_count = 1e9
+
+    cache = retrieve_cache(args, download=True)
+    timedict = cache.timedict
+
+    values = []
+    for delta in dt:
+        h_time = now + dt[-1] - delta
+        if not h_time in timedict and soft_retrieve: # Check if this works correctly
+            h_key = sd_closest(timedict, h_time)
+            if h_key - h_time < soft_margin:
+                value = timedict[h_key]
+            else:
+                value = None
+                values.append(value) # Having None here will prevent it from being added
+                continue
+            # check if h_key not too far away
+            # timedict[h_time] if h_time in timedict else timedict[min(timedict.keys(), key=lambda k: abs(k-h_time))]
+        else:
+            value = timedict.get(h_time, None)
+        if value is not None and only_close:
+            value = value[-1] # final value is close value
+        values.append(value)
+    
+    return torch.tensor(values)
 
 def retrieve_training_data(
     args,
     dt = [ 2*gran_to_sec['D'], gran_to_sec['D']  ], # time before target in seconds to return values for
-    only_close = True
+    only_close = True,
+    full_sequence = False, # Give full sequence in inputs, including target
+    targets = True,
+    soft_retrieve = True,
+    soft_margin = 3000
         ):
         # TODO: Make the offsets 'soft', so it does not have to be exactly dt values
-
+        # TODO: Make sure this works when not using only close values
         cache = retrieve_cache(args, download=True)
 
         timedict = cache.timedict
 
         targets = []
         values = []
+        empty = 0
 
         for time in list(timedict.keys()):
             # begins at earliest time
@@ -416,19 +481,97 @@ def retrieve_training_data(
                 target = target[-1]
             values_i = []
             for delta in dt:
-                h_time = subtract_time(time, delta)
-                value = timedict.get(h_time, None)
+                h_time = time - delta
+                if not h_time in timedict and soft_retrieve: # Check if this works correctly
+                    h_key = sd_closest(timedict, h_time)
+                    if h_key - h_time < soft_margin:
+                        value = timedict[h_key]
+                    else:
+                        value = None
+                        values_i.append(value) # Having None here will prevent it from being added
+                        continue
+                    # check if h_key not too far away
+                    # timedict[h_time] if h_time in timedict else timedict[min(timedict.keys(), key=lambda k: abs(k-h_time))]
+                else:
+                    value = timedict.get(h_time, None)
                 if value is not None and only_close:
                     value = value[-1] # final value is close value
                 values_i.append(value)
+            if full_sequence:
+                values_i.append(target)
             if None in values_i:
+                empty += 1
                 continue
             
             targets.append(target)
             values.append(values_i)
-
+        print(f"Missed {empty} samples")
+        if full_sequence:
+            return values
         return values, targets
 
+def retrieve_RNN_data(
+    args,
+    dt = [ 2*gran_to_sec['D'], gran_to_sec['D']  ], # time before target in seconds to return values for
+    only_close = True,
+    soft_retrieve = True,
+    soft_margin = 3600, # Max number of seconds the soft retrieval may deviate from requested time
+        ):
+        # TODO: Make the offsets 'soft', so it does not have to be exactly dt values
+        # TODO: Make sure this works when not using only close values
+
+        # RNN requires an input sequence, and a target sequence, which
+        # overlap except for the first and last value.
+        # inputs = range(0,20); target = range(1,21)
+        cache = retrieve_cache(args, download=True)
+
+        timedict = cache.timedict
+
+        targets = []
+        values = []
+        empty = 0
+
+        for time in list(timedict.keys()):
+            # begins at earliest time
+            target = timedict[time]
+            if only_close:
+                target = target[-1]
+            values_i = []
+            targets_i = []
+            for delta in dt:
+                h_time = time - delta
+                if not h_time in timedict and soft_retrieve: # Check if this works correctly
+                    h_key = sd_closest(timedict, h_time)
+                    if h_key - h_time < soft_margin:
+                        value = timedict[h_key]
+                    else:
+                        value = None
+                        values_i.append(value) # Having None here will prevent it from being added
+                        continue
+                    # check if h_key not too far away
+                    # timedict[h_time] if h_time in timedict else timedict[min(timedict.keys(), key=lambda k: abs(k-h_time))]
+                else:
+                    value = timedict.get(h_time, None)
+                    
+                # print("F:", h_time)
+                if value is not None and only_close:
+                    value = value[-1] # final value is close value
+                values_i.append(value)
+                targets_i.append(value)
+
+            if None in values_i:
+                empty += 1
+                # print("Not available")
+                continue
+            targets_i.pop(0)
+            targets_i.append(target)
+            # store indiv. lists in list
+            values.append(values_i)
+            targets.append(targets_i)
+
+        print(f"Missed {empty} samples")
+        print(f"Returning {len(values)} samples")
+        return values, targets
 
 def test():
     args = HistoryArgs()
