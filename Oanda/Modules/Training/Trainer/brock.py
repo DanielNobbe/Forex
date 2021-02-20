@@ -13,7 +13,6 @@ from torch.utils.data import Dataset, DataLoader
 import os
 
 from pdb import set_trace
-from textwrap import dedent
 # Imports all models, can be changed for efficiency
 
 
@@ -26,23 +25,23 @@ def evaluate(val_dataloader, model, loss_fn, test=False):
     accuracies = []
     # directions = []
     target_directions = []
-    for (values, targets) in val_dataloader:
+    for (input, target) in val_dataloader:
         model.eval()
-        outputs = model(values.unsqueeze(dim=2))
-        loss = loss_fn(outputs.squeeze(2), targets)
+        output = model(input)
+        loss = loss_fn(output.squeeze(1), target)
         losses.append(loss.item())
         # We also want to check if it always has the right direction
         # The direction it should have is target - input
         # The direction it has is target - output
         # These should be the same
-        target_direction = targets.squeeze()[-1] - values.squeeze()[-1] # take only final value in RNN
+        target_direction = target - input[:,-1]
         target_direction /= torch.abs(target_direction)
-        mask = targets[-1] == values[-1]
+        mask = target == input[:,-1]
         target_direction[mask] = torch.tensor([0], dtype=torch.float)
 
-        direction = targets.squeeze()[-1] - outputs.squeeze()[-1] # take only final value in RNN
+        direction = target - output
         direction /= torch.abs(direction)
-        mask = targets[-1] == outputs.squeeze()[-1]
+        mask = target == output
         direction[mask] = torch.tensor([0], dtype=torch.float)
 
         accuracy = (target_direction == direction).to(torch.float).mean()
@@ -81,29 +80,19 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
         for epoch in range(no_epochs):
             if missed_steps > 1 and val_accuracy > 0.9 and epoch>min_epochs:
                 break
-            for index, (value, target) in enumerate(train_dataloader): 
-                # TODO: Generalise this for RNNs (target is not included now)
+            for index, (input_, target) in enumerate(train_dataloader):
 
                 optimizer.zero_grad()
 
-                output = model(value.unsqueeze(dim=2))
-                # TODO: carry over this hidden state, might allow for
-                # longer sequences
-                # TODO: Find a way to traverse the time series directly,
-                    # without taking only a subset
-                # set_trace()
-                loss = loss_fn(output.squeeze(2), target)
+                output = model(input_)
+
+                loss = loss_fn(output.squeeze(1), target)
                 losses.append(loss.item())
                 loss.backward()
                 optimizer.step()
 
                 if index % print_interval == 0:
-                    print(
-                                f"Step {epoch}.{index} - Loss: {loss} - "
-                                f"prediction {output[0].squeeze().tolist()} - "
-                                f"input {value[0].squeeze().tolist()} - "
-                                f"target {target[0].squeeze().tolist()}"
-                    )
+                    print(f"Step {epoch}.{index} - Loss: {loss} - prediction {output[0].item()} - input {input_[0]}, target {target[0].item()}")
                 if index % val_interval == 0 and epoch>0:
                     new_accuracy = evaluate(val_dataloader, model, loss_fn)
                     if new_accuracy > val_accuracy:
@@ -133,63 +122,41 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
 
 # def 
 
-def main_rnn():
-    """ Main function for training an RNN in a naive way.
-    Extracts a limited sequence and applies RNN to it.
-    Not very realistic, would be better to implement an RNN method that
-    can run through the complete dataset.
+def brock():
+    """ Main function for training.
+    For batching.
+    Note: slowdown is because of large validation set.
 
     """
 ####################################
     # TODO: Add the value offsets to this
-    ret_args = retrieval.HistoryArgs()
-    ret_args.instrument = "EUR_USD"
-    ret_args.start_time = "2018-01-01"
+    args = retrieval.HistoryArgs()
+    args.instrument = "EUR_USD"
+    args.start_time = "2018-01-01"
     # end_time = "2020-10-25"
     # granularity = "H3"
-    ret_args.granularity = "M1" # Granularity to retrieve data with
-    ret_args.max_count = 1e9
-
-    model_granularity = retrieval.gran_to_sec['H6'] 
-    # TODO: Figure out how to deal with weekend days, for which there is no data
-    # (could potentially not use real times, but only numbers of samples?)
-    # TODO: Make a database to store info about models so it's easily searchable
+    args.granularity = "M1" # Granularity to retrieve data with
+    args.max_count = 1e9
 
 ####################################
 
     # history = retrieval.history.download_history(instrument, 
     #                             start_time, granularity, count)
-    sequence_length = 10
-    dt = range(sequence_length)[::-1]
-    dt = [model_granularity*d for d in dt]
-    inputs, targets = retrieval.history.retrieve_RNN_data(ret_args, dt, only_close=True, soft_retrieve=True, soft_margin=3600)
-
-    # values = retrieval.history.retrieve_cache(args, download=True).values.closes
-
-    # TODO: Revert all these changes - we need two vectors
-    # inputs and targets, which are shifted by one timestep..
-    random_split = True
+    dt = [2*retrieval.gran_to_sec['D'], 1.5*retrieval.gran_to_sec['D'], retrieval.gran_to_sec['D']]
+    inputs, targets = retrieval.history.retrieve_training_data(args, dt, only_close=True)
+    rnd_split = True
     batch_size = 32
-    print("inputs: ", len(inputs))
-    train_loader, val_loader, test_loader = retrieval.build_dataset(inputs, targets,
-            val_split=0.4, test_split=0.1, rnd_split=random_split, batch_size=batch_size, num_workers=8,)
-    print(f"Train/val/test size: {len(train_loader)*batch_size}/{len(val_loader)*batch_size}/{len(test_loader)*batch_size}")
-    print("Total data size: ", (len(train_loader)+len(val_loader)+len(test_loader))*batch_size)
-
-    # RNN expects a sequence of inputs. So we should allow the retrieval
-    # function to give a single dt value, and return a sequence with that
-    # spacing for a number of samples. Try it with a range conversion to
-    # list
-    # TODO: Not working - the retrieval does not work with so many targets
-    #       need to make the input interval more flexible. Perhaps
-            # by finding the closest sample (using index and giving a guess?)
-    hidden_size = 8 # Simple RNN needs same hidden size as output
-    # which will hamper performance quite a bit.
-    # model = RNN.OurRNN(dt_settings=dt, input_size=1, hidden_size=hidden_size,
-    #              batch_first=True)
-    model = RNN.CandleLSTM(instrument=ret_args.instrument, dt_settings=dt, input_size=1, hidden_size=hidden_size,
-                 batch_first=True, num_layers=3)
-
+    shuffle = True
+    train_loader, val_loader, test_loader = retrieval.build_dataset(inputs, targets, 
+            val_split=0.4, test_split=0.1, rnd_split=rnd_split, shuffle=shuffle,
+            batch_size=batch_size, num_workers=8)
+    print(f"Train/val/test size: {len(train_loader)}/{len(val_loader)}/{len(test_loader)}")
+    print("Total data size: ", len(inputs))
+    # Define model
+    hidden_sizes = [8, 8, 8]
+    markov_order = len(dt)
+    model = markov_kernel.MarkovKernel(markov_order, hidden_sizes, 1,
+             dt_settings = dt, instrument=args.instrument) # Example
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
     torch.optim.lr_scheduler.MultiStepLR(optimizer, [4])
     # TODO: Implement learning rate annealing
@@ -202,7 +169,7 @@ def main_rnn():
     # os.makedirs("")
     for i in range(1000):
         # Sets save_path as the first free slot in the pretrained models folder
-        save_path = f"Pre-trained Models/RNN_{hidden_size}_{model_granularity}_i{i}.pt"
+        save_path = f"Pre-trained Models/markov{markov_order}n_{hidden_sizes}_{args.granularity}_i{i}.pt"
         if not os.path.isfile(save_path):
             break
 
@@ -211,7 +178,6 @@ def main_rnn():
     prediction = model.infer()
     set_trace()
     print("Prediction: ", prediction)
-
 
 
     
