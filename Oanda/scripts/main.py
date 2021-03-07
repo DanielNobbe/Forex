@@ -1,10 +1,13 @@
 '''
 Main function for testing
 '''
+# Modify path to run from root folder:
+import sys, os
+path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, path)
 
 from libs.API.Oanda import *
-from libs.API.Interpreter import Interpreter
-from Scheduler import VariableSafe
+from modules.trader.interpreter import Interpreter, VariableSafe
 from libs.API.WorkingFunctions import ReadableOutput
 
 # This does not work, because the args are not updated between runs

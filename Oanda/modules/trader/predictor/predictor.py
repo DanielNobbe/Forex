@@ -1,8 +1,8 @@
 """ In this file, the base predictor class is defined, including functions 
     for making predictions. 
 """
-# import Training.Models.markov_kernel_1n
-import Modules.Training.Models.markov_kernel_1n as mk
+# import training.models.markov_kernel_1n
+import modules.training.models.markov_kernel_1n as mk
 import torch
 import torch.nn as nn
 import numpy as np
@@ -30,7 +30,7 @@ class Predictor():
             # input should now be a list of one input value
             input = torch.tensor(input)
 
-        prediction = self.model.forward(input).detach().numpy()
+        prediction = self.model.infer(test_data = input).detach().numpy()
         return prediction
     
     def predict(self):
@@ -49,7 +49,7 @@ class Predictor():
 #     def __init__(self, pretrained_path=None):
 #         model = mk.MarkovKernel(hidden_size=[16]) # Default value, TODO
 #         if pretrained_path is None:
-#             pretrained_path = "Pre-trained Models/markov_kernel_n1.pt"
+#             pretrained_path = "pre-trained models/markov_kernel_n1.pt"
 #         super(MarkovPredictor, self).__init__(model=model, pretrained_path=pretrained_path)
     
 #     def gather_input(self):
@@ -64,7 +64,7 @@ class Predictor():
 #     def __init__(self, pretrained_path=None):
 #         model = mk.MarkovKernel(hidden_size=[16]) # Default value, 
 #         if pretrained_path is None:
-#             pretrained_path = "Pre-trained Models/markov_kernel_n1.pt"
+#             pretrained_path = "pre-trained models/markov_kernel_n1.pt"
 #         super(TestMarkovPredictor, self).__init__(model=model, pretrained_path=pretrained_path)
     
 #     def gather_input(self):

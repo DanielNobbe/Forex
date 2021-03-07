@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import Modules.Training.Retrieval as retrieval
+import modules.training.retrieval as retrieval
 from pdb import set_trace
 """
-Each of our Models should, by default, only return a single output, 
+Each of our models should, by default, only return a single output, 
 which should be a torch.tensor (float)
 """
 

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import Modules.Training.Retrieval as retrieval
+import modules.training.retrieval as retrieval
 from pdb import set_trace
 
 def make_ordinal(n):
@@ -53,6 +53,7 @@ class MarkovKernel(nn.Module):
     
     def retrieve_for_inference(self):
         assert self.dt_settings is not None, "dt_settings required for using model. Have you loaded the model correctly?"
+        print("Instrument: ", self.instrument)
         data = retrieval.retrieve_inference_data(
             self.instrument,
             dt = self.dt_settings,
@@ -60,11 +61,15 @@ class MarkovKernel(nn.Module):
         # TODO: Add soft margin to this automatically 
         return data
 
-    def infer(self):
-        with torch.no_grad():
-            data = self.retrieve_for_inference()
-            output = self.forward(data)
-            return output[-1, -1] # Final value is prediction
+    def infer(self, test_data=None):
+        if test_data is None:
+            with torch.no_grad():
+                data = self.retrieve_for_inference()
+                output = self.forward(data)
+                return output[-1, -1] # Final value is prediction
+        else:
+            output = self.forward(test_data)
+            return output[-1]
 
     # def classify(self, history):
     #     classification = self.model(history[-1])

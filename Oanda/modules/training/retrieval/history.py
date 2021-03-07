@@ -387,7 +387,7 @@ def retrieve_cache(args, download=False):
     # using a small granularity. Then, we can use this data to split
     # into larger-granularity data with certain offsets.
 
-    os.makedirs('Cache', exist_ok=True)
+    os.makedirs('cache', exist_ok=True)
 
     # Let's begin by retrieving some data with minute granularity.
     # instrument = "EUR_USD"
@@ -398,7 +398,7 @@ def retrieve_cache(args, download=False):
     # count = 10000
     
     # download_history(instrument, start_time, granularity, count)
-    pickle_path = f"Cache/{args.instrument}_s{args.start_time}_{args.granularity}_{args.max_count}"
+    pickle_path = f"cache/{args.instrument}_s{args.start_time}_{args.granularity}_{args.max_count}"
 
     if download:
         cache = unpickle_or_generate(download_history, pickle_path,
@@ -587,7 +587,7 @@ def test():
     # using a small granularity. Then, we can use this data to split
     # into larger-granularity data with certain offsets.
 
-    # os.makedirs('Cache', exist_ok=True)
+    # os.makedirs('cache', exist_ok=True)
 
     # # Let's begin by retrieving some data with minute granularity.
     # instrument = "EUR_USD"
@@ -597,7 +597,7 @@ def test():
     # count = 1e9 # 
     
     # # download_history(instrument, start_time, granularity, count)
-    # pickle_path = f"Cache/{instrument}_s{start_time}_{granularity}_0"
+    # pickle_path = f"cache/{instrument}_s{start_time}_{granularity}_0"
     # large_history = unpickle_or_generate(download_history, pickle_path,
     #              instrument, start_time, granularity, count)
 
