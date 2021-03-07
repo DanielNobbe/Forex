@@ -28,7 +28,7 @@ def evaluate(val_dataloader, model, loss_fn, test=False):
     for (input, target) in val_dataloader:
         model.eval()
         output = model(input)
-        loss = loss_fn(output, target)
+        loss = loss_fn(output.squeeze(1), target)
         losses.append(loss.item())
         # We also want to check if it always has the right direction
         # The direction it should have is target - input
@@ -65,28 +65,25 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
     final_losses = []
     val_accuracy = 0 
     missed_steps = 0 
+
+    model_notes = input("Please enter a description for the model you are training: ")
+
     for epoch in range(no_epochs):
         if missed_steps > 1 and val_accuracy > 0.9 and epoch>min_epochs:
             break
-        for index, (input, target) in enumerate(train_dataloader):
+        for index, (input_, target) in enumerate(train_dataloader):
 
-            # Temporarily convert floats to tensors here, 
-            # should fix this in dataloader
-            # input = torch.tensor([input])
-            # target = torch.tensor([target])
             optimizer.zero_grad()
 
-            output = model(input)
+            output = model(input_)
 
-            loss = loss_fn(output, target)
+            loss = loss_fn(output.squeeze(1), target)
             losses.append(loss.item())
-            # if index>800:
-            #     final_losses.append(loss.item())
             loss.backward()
             optimizer.step()
 
             if index % 50 == 0:
-                print(f"Step {epoch}.{index} - Loss: {loss} - prediction {output.item()} - input {input}, target {target.item()}")
+                print(f"Step {epoch}.{index} - Loss: {loss} - prediction {output.item()} - input {input_}, target {target.item()}")
                 if index % 100 == 0:
                     new_accuracy = evaluate(val_dataloader, model, loss_fn)
                     if new_accuracy > val_accuracy:
@@ -97,7 +94,10 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
                             break
     test_acc = evaluate(test_dataloader, model, loss_fn, test=True)
 
-    notes = ''
+    # training_notes = input("Please enter some information about training: ")
+    
+
+    notes = f"{model_notes} \nTest accuracy: {test_acc}"
 
     save_dict = {'state_dict': model.state_dict(), 'dt_settings': model.dt_settings, 'notes': notes}
 
@@ -129,7 +129,7 @@ def misty():
     # end_time = "2020-10-25"
     # granularity = "H3"
     args.granularity = "M1" # Granularity to retrieve data with
-    args.max_count = 10000
+    args.max_count = 1e9
 ####################################
 
     # history = retrieval.history.download_history(instrument, 
@@ -143,17 +143,11 @@ def misty():
     hidden_sizes = [8]
     markov_order = 2
     model = markov_kernel.MarkovKernel(markov_order, hidden_sizes, 1, dt_settings = dt) # Example
-    # train_dataloader = DataLoader(train_set, batch_size=1, # Larger batch size not yet implemented
-    #                     shuffle=True, num_workers=0)
-    # val_dataloader = DataLoader(val_set, batch_size=1, # Larger batch size not yet implemented
-    #                     shuffle=True, num_workers=0)
-    # test_dataloader = DataLoader(test_set, batch_size=1, # Larger batch size not yet implemented
-    #                     shuffle=True, num_workers=0)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     # loss_fn = nn.MSELoss() # TODO: Move this into model definition?
     loss_fn = nn.L1Loss()
-    no_epochs = 2
-    min_epochs = 20 # For early stopping
+    no_epochs = 200
+    min_epochs = 1 # For early stopping
     # os.makedirs("")
     for i in range(1000):
         # Sets save_path as the first free slot in the pretrained models folder

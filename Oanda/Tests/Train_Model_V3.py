@@ -8,7 +8,7 @@ import pathlib
 # Specify path to look for Modules folder, based on current folder structure
 path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, path)
-from Modules.Training.Trainer.ketchum import *
+from Modules.Training.Trainer.brock import *
 
 if __name__=='__main__':
-    main_rnn()
+    brock()
