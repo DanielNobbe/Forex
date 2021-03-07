@@ -17,5 +17,6 @@ dependencies:
   - apscheduler
   - sqlalchemy
   - munch
+  - pyyaml
   - pip:
     - oandapyV20
