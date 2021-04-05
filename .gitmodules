@@ -1,0 +1,9 @@
+[submodule "Oanda/configs/Forex_credentials"]
+	path = Oanda/configs/Forex_credentials
+	url = git@github.com:DanielNobbe/Forex_credentials.git
+[submodule "Oanda/configs/Oanda/configs/credentials"]
+	path = Oanda/configs/Oanda/configs/credentials
+	url = git@github.com:DanielNobbe/Forex_credentials.git
+[submodule "Oanda/configs/credentials"]
+	path = Oanda/configs/credentials
+	url = git@github.com:DanielNobbe/Forex_credentials.git
