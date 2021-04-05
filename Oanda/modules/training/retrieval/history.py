@@ -386,7 +386,6 @@ def retrieve_cache(args, download=False):
     # we're going to retrieve a large amount of data here,
     # using a small granularity. Then, we can use this data to split
     # into larger-granularity data with certain offsets.
-
     os.makedirs('cache', exist_ok=True)
 
     # Let's begin by retrieving some data with minute granularity.
@@ -419,6 +418,7 @@ def retrieve_inference_data(
     soft_retrieve = True,
     soft_margin = 3000,
     only_close = True,
+    realtime=False
     ):
     # Same as for training, except only one sequence (and full one at that)
     # and no target value. Last dt should be now
@@ -430,8 +430,11 @@ def retrieve_inference_data(
     args.start_time = earliest_time
     args.granularity = 'S5' # Shortest option
     args.max_count = 1e9
+    if realtime: # Don't save cache if running in real time
+        cache = download_history(args)
+    else:
+        cache = retrieve_cache(args, download=True)
 
-    cache = retrieve_cache(args, download=True)
     timedict = cache.timedict
 
     values = []
@@ -442,8 +445,18 @@ def retrieve_inference_data(
             if h_key - h_time < soft_margin:
                 value = timedict[h_key]
             else:
-                value = None
-                values.append(value) # Having None here will prevent it from being added
+                if realtime:
+                    # TODO : Move this error handling to a higher level
+                    raise ValueError(
+                            "Can not run this model right now, "
+                            "the required data is not available. "
+                            "This can (for instance) be caused by "
+                            "running a model that requires data from "
+                            "yesterday while no trading "
+                            "happened yesterday.")
+                else:
+                    value = None
+                    values.append(value) # Having None here will prevent it from being added
                 continue
             # check if h_key not too far away
             # timedict[h_time] if h_time in timedict else timedict[min(timedict.keys(), key=lambda k: abs(k-h_time))]
