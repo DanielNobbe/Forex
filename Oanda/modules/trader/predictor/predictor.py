@@ -11,32 +11,35 @@ import numpy as np
 class Predictor():
     # TODO: Modify this to deal with higher numbers of input, by defining 
     # object-specific input retrieval
-    def __init__(self, model, prediction_time = 12, pretrained_path=None):
-        self.prediction_time = prediction_time # Hrs in the future
+    def __init__(self, model, pretrained_path, soft_margin): #prediction_time = 3600):
+        # self.prediction_time = prediction_time # seconds in the future, does not seem necessary
         self.model_type = str(model)
         self.model = model
+        self.soft_margin = soft_margin
         model.eval()
 
-        if pretrained_path is not None:
-            loaded_dict = torch.load(pretrained_path)
-            model.load_state_dict(loaded_dict['state_dict']) # Loads pretrained model
-            model.dt_settings = loaded_dict['dt_settings']
-            model.notes = loaded_dict['notes']
+        # if pretrained_path is not None:
+        # Can not use a predictor that has not been trained
+        loaded_dict = torch.load(pretrained_path)
+        model.load_state_dict(loaded_dict['state_dict']) # Loads pretrained model
+        model.dt_settings = loaded_dict['dt_settings']
+        model.notes = loaded_dict['notes']
+
         
-    def predict_with_input(self, input): # Input is model dependent
-        if not isinstance(input, torch.Tensor):
-            if not isinstance(input, list):
-                input = [float(input)]
+    def predict_with_input(self, input_): # Input is model dependent
+        if not isinstance(input_, torch.Tensor):
+            if not isinstance(input_, list):
+                input_ = [float(input_)]
             # input should now be a list of one input value
-            input = torch.tensor(input)
+            input = torch.tensor(input_)
 
         prediction = self.model.infer(test_data = input).detach().numpy()
-        return prediction
+        return prediction, input_
     
     def predict(self):
         # Automatically retrieves relevant samples from remote
-        prediction = self.model.infer().detach().numpy()
-        return prediction
+        prediction, current_value = self.model.infer().detach().numpy()
+        return prediction, current_value
     
     def __call__(self, *args):
         return self.predict(*args)
