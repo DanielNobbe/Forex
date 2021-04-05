@@ -51,25 +51,30 @@ class MarkovKernel(nn.Module):
         output = self.model(value)
         return output
     
-    def retrieve_for_inference(self):
+    def retrieve_for_inference(self, soft_margin):
         assert self.dt_settings is not None, "dt_settings required for using model. Have you loaded the model correctly?"
         print("Instrument: ", self.instrument)
         data = retrieval.retrieve_inference_data(
             self.instrument,
             dt = self.dt_settings,
+            soft_retrieve=True,
+            soft_margin=soft_margin,
+            realtime=True,
         ).unsqueeze(dim=0)
+        zero_index = dt.index(0)
+        current_value = data[zero_index]
         # TODO: Add soft margin to this automatically 
-        return data
-
-    def infer(self, test_data=None):
+        return data, current_value
+# TODO: Add a base class for models that shares these inference functions
+    def infer(self, test_data=None, soft_margin=0):
         if test_data is None:
             with torch.no_grad():
-                data = self.retrieve_for_inference()
+                data, current_value = self.retrieve_for_inference(soft_margin)
                 output = self.forward(data)
-                return output[-1, -1] # Final value is prediction
+                return output[-1, -1], current_value # Final value is prediction
         else:
             output = self.forward(test_data)
-            return output[-1]
+            return output[-1], test_data[-1] # Last value of test data should be current
 
     # def classify(self, history):
     #     classification = self.model(history[-1])
