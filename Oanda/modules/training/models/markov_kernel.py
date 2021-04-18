@@ -4,6 +4,7 @@ import numpy as np
 import modules.training.retrieval as retrieval
 from pdb import set_trace
 
+
 def make_ordinal(n):
     '''
     Convert an integer into its ordinal representation::
@@ -61,8 +62,7 @@ class MarkovKernel(nn.Module):
             soft_margin=soft_margin,
             realtime=True,
         ).unsqueeze(dim=0)
-        zero_index = dt.index(0)
-        current_value = data[zero_index]
+        current_value = data[-1] # Last value is target
         # TODO: Add soft margin to this automatically 
         return data, current_value
 # TODO: Add a base class for models that shares these inference functions

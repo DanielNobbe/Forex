@@ -59,6 +59,16 @@ gran_to_sec = {
     # "M": "1 month candlesticks, aligned to first day of the month",
 }
 
+
+def build_dt(dt_dict):
+    # Creates dt_settings list from 
+    # cfg specification, for use with retrieve_for_inference
+    granularity = gran_to_sec[dt_dict['granularity']]
+    no_samples = dt_dict['no_samples']
+    dt_settings = [granularity*index for index in range(no_samples, 0, -1)]
+    return dt_settings
+
+
 class HistoryArgs():
     def __init__(self):
         self.instrument = None
@@ -424,14 +434,14 @@ def retrieve_inference_data(
     # and no target value. Last dt should be now
     now = datetime.datetime.now().timestamp()
     earliest_time = now - (dt[0] - dt[-1]) # First dt should be earliest, final dt should be latest
-
+    
     args = HistoryArgs()
     args.instrument = instrument
     args.start_time = earliest_time
     args.granularity = 'S5' # Shortest option
     args.max_count = 1e9
     if realtime: # Don't save cache if running in real time
-        cache = download_history(args)
+        cache = download_history(args.instrument, args.start_time, args.granularity, args.max_count)
     else:
         cache = retrieve_cache(args, download=True)
 
@@ -439,7 +449,7 @@ def retrieve_inference_data(
 
     values = []
     for delta in dt:
-        h_time = now + dt[-1] - delta
+        h_time = now + dt[-1] - delta # This results in the final h_time being now
         if not h_time in timedict and soft_retrieve: # Check if this works correctly
             h_key = sd_closest(timedict, h_time)
             if h_key - h_time < soft_margin:
