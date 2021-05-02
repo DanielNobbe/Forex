@@ -27,8 +27,8 @@ def Test(inputt):
     
     granularity = "D"
 
-    # pt_path = f"pre-trained models/markov1n_{hidden_sizes}_{granularity}_i1.pt"
-    pt_path = "pre-trained models/markov2n_[8]_M1_i0.pt"
+    # pt_path = f"pre-trained-models/markov1n_{hidden_sizes}_{granularity}_i1.pt"
+    pt_path = "pre-trained-models/markov2n_[8]_M1_i0.pt"
     predictor = Predictor(model, prediction_time=24, pretrained_path=pt_path)
 
     print("dt: ", predictor.model.dt_settings)
