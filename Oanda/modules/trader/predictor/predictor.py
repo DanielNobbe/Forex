@@ -56,7 +56,7 @@ class Predictor():
 
         model = cls.build_model(mcfg)
         pt_path = cfg['model']['pt_path']
-        pt_models_folder = "pre-trained models"
+        pt_models_folder = "pre-trained-models"
         pt_path = os.path.join(pt_models_folder, pt_path)
         # assert model.instrument == instrument, (
         #     "Model is trained for different currency than chosen for trading."
@@ -64,7 +64,7 @@ class Predictor():
 
         predictor = Predictor(model, pretrained_path=pt_path, soft_margin=0.2*gran_to_sec['D'])
         #  # Example
-        # pt_path = "pre-trained models/markov2n_[8]_M1_i0.pt"
+        # pt_path = "pre-trained-models/markov2n_[8]_M1_i0.pt"
         # # model = build_model(cfg)
         # soft_gran = gran_to_sec[cfg['retrieval']['soft_gran']]
         # soft_margin = cfg['retrieval']['soft_margin'] * soft_gran
@@ -108,7 +108,7 @@ class Predictor():
     
     def predict(self):
         # Automatically retrieves relevant samples from remote
-        prediction, current_value = self.model.infer().detach().numpy()
+        prediction, current_value = (thing.detach().numpy() for thing in self.model.infer())
         return prediction, current_value
     
     def __call__(self, *args):
@@ -122,7 +122,7 @@ class Predictor():
 #     def __init__(self, pretrained_path=None):
 #         model = mk.MarkovKernel(hidden_size=[16]) # Default value, TODO
 #         if pretrained_path is None:
-#             pretrained_path = "pre-trained models/markov_kernel_n1.pt"
+#             pretrained_path = "pre-trained-models/markov_kernel_n1.pt"
 #         super(MarkovPredictor, self).__init__(model=model, pretrained_path=pretrained_path)
     
 #     def gather_input(self):
@@ -137,7 +137,7 @@ class Predictor():
 #     def __init__(self, pretrained_path=None):
 #         model = mk.MarkovKernel(hidden_size=[16]) # Default value, 
 #         if pretrained_path is None:
-#             pretrained_path = "pre-trained models/markov_kernel_n1.pt"
+#             pretrained_path = "pre-trained-models/markov_kernel_n1.pt"
 #         super(TestMarkovPredictor, self).__init__(model=model, pretrained_path=pretrained_path)
     
 #     def gather_input(self):
