@@ -66,12 +66,13 @@ class MarkovKernel(nn.Module):
         # TODO: Add soft margin to this automatically 
         return data, current_value
 # TODO: Add a base class for models that shares these inference functions
+
     def infer(self, test_data=None, soft_margin=0):
         if test_data is None:
             with torch.no_grad():
                 data, current_value = self.retrieve_for_inference(soft_margin)
                 output = self.forward(data)
-                return output[-1, -1], current_value # Final value is prediction
+                return output[-1, -1], current_value[-1] # Final value is prediction
         else:
             output = self.forward(test_data)
             return output[-1], test_data[-1] # Last value of test data should be current
