@@ -9,7 +9,7 @@ path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, path)
 from modules.trader.predictor import *
 from modules.training.models import markov_kernel
-import modules.training.retrieval as retrieval
+import modules.info.retrieval as retrieval
 import torch
 
 def Test(inputt):

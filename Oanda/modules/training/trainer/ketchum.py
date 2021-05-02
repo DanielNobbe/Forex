@@ -8,7 +8,7 @@ import torch
 import math
 import torch.nn as nn
 from modules.training.models import * 
-import modules.training.retrieval as retrieval
+import modules.info.retrieval as retrieval
 from torch.utils.data import Dataset, DataLoader
 import os
 

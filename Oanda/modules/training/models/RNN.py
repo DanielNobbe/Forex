@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import modules.training.retrieval as retrieval
+import modules.info.retrieval as retrieval
 from pdb import set_trace
 """
 Each of our models should, by default, only return a single output, 

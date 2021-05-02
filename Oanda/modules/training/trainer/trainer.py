@@ -8,7 +8,7 @@ import torch
 import math
 import torch.nn as nn
 from modules.training.models import * 
-import modules.training.retrieval as retrieval
+import modules.info.retrieval as retrieval
 from torch.utils.data import Dataset, DataLoader
 import os
 import yaml
@@ -193,15 +193,18 @@ def trainer():
     min_epochs = tcfg['min_epochs']
     # os.makedirs("")
     save_file = tcfg['model']['pt_path']
+    
+    save_dir = "pre-trained-models"
+    os.mkdirs(save_dir, exist_ok=True)
     if '%i' in save_file:
         for i in range(1000):
         # Sets save_path as the first free slot in the pretrained models folder
         # save_path = "pre-trained models/markov{markov_order}n_{hidden_sizes}_{args.granularity}_i{i}.pt"
-            save_path = "pre-trained models/" + save_file % i
+            save_path = os.path.join(save_dir, save_file % i)
             if not os.path.isfile(save_path):
                 break
     else:
-        save_path = "pre-trained models/" + save_file
+        save_path = os.path.join(save_dir, save_file)
     
     if save_path[-3:0] != '.pt':
         save_path += '.pt'

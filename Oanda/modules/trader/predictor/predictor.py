@@ -10,7 +10,7 @@ import torch.nn as nn
 import numpy as np
 import yaml
 import os
-from modules.training.retrieval import gran_to_sec, build_dt
+from modules.info.retrieval import gran_to_sec, build_dt
 from pdb import set_trace
 
 

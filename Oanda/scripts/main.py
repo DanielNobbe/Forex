@@ -8,10 +8,10 @@ sys.path.insert(1, path)
 
 from libs.API import *
 from modules.trader.interpreter import Interpreter, VariableSafe
-from modules.training.retrieval import gran_to_sec
+from modules.info.retrieval import gran_to_sec
 from modules.trader.predictor import Predictor
 from modules.training.models import markov_kernel
-import modules.training.retrieval as retrieval
+import modules.info.retrieval as retrieval
 # from libs.API.WorkingFunctions import ReadableOutput
 
 # This does not work, because the args are not updated between runs
