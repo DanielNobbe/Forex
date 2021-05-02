@@ -25,9 +25,10 @@ class CandleLSTM(nn.Module):
     
     def forward(self, values):
         assert self.dt_settings is not None, "dt_settings required for using model. Have you loaded the model correctly?"
+        values = values.unsqueeze(dim=2)
         output, hidden_state = self.LSTM(values)
         # set_trace()
-        return self.output_layer(output)
+        return self.output_layer(output).squeeze(dim=2)
     
     def retrieve_for_inference(self):
         assert self.dt_settings is not None, "dt_settings required for using model. Have you loaded the model correctly?"
