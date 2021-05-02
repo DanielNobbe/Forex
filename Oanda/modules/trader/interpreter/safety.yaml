@@ -1,0 +1,4 @@
+allowed_pairs: [
+  'EUR_USD',
+  # Update the buy/sell limits when adding new currency pair!
+]

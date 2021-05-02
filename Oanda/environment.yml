@@ -2,6 +2,7 @@ name: forex
 channels:
   - defaults
   - conda-forge
+  - pytorch
 dependencies:
   - python=3.8
   - notebook
@@ -9,7 +10,13 @@ dependencies:
   - matplotlib
   - requests
   - pip
+  - pytorch
+  - torchvision
+  - torchaudio
+  - sortedcontainers
+  - apscheduler
+  - sqlalchemy
+  - munch
+  - pyyaml
   - pip:
     - oandapyV20
-prefix: /home/daniel/anaconda3/envs/forex
-

@@ -5,7 +5,7 @@ All possible trades
 # TODO: There is a better way to do this with generating only what you need, but this is alse nice to have because of the info, but it is slower, since you need to filter all the useless stuf out
 # TODO: Check FixedPriceOrder
     
-def FilterDict(Dictionary):
+def filter_dict(Dictionary):
     To_be_deleted = []
     for key, value in Dictionary.items():
         if isinstance(value, dict):

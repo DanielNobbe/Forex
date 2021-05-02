@@ -1,0 +1,22 @@
+
+model:
+  config_file:  'model.yaml' # Config file name inside configs/models/. '.yaml' is optional TODO!
+  pt_path:      'markov2n_8_M1_%i.pt' # Pretrained file path. '.pt' is optional, but this argument is not. 
+  #If %i is in the string, it will be replaced by an index for the trained model
+
+retrieval:
+  soft_margin:  0.2     # Or should we include this in the model config?
+  soft_gran:    'D'     # Include to use a standard granularity. Will be multiplied with soft_margin
+  
+time_series:
+  start_time:   '2016-01-01'
+  granularity:  'D'     # Training granularity. Retrieval granularity will be smaller. 
+  # Can be number of seconds, or granularity string
+
+epochs:         2 # 200
+min_epochs:     1
+model_notes:    "Test model"
+# And other training things, like learning rate..
+# TO ADD:
+# optimizer
+# loss function

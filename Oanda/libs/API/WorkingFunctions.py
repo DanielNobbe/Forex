@@ -10,7 +10,7 @@ def AccountID(self, tags=[]):
             accountID.append(i["id"])
     return accountID
 
-def ReadableOutput(output, sort_keys=True, indent = 4, separators=(',', ': ')):
+def readable_output(output, sort_keys=True, indent = 4, separators=(',', ': ')):
     return json.dumps(output, sort_keys=sort_keys, indent=indent, separators=separators)
 
 def CallableFunctions(Class):
