@@ -10,7 +10,7 @@ retrieval:
   
 time_series:
   start_time:   '2016-01-01'
-  granularity:  'D'     # Training granularity. Retrieval granularity will be smaller. 
+  granularity:  'D'     # Retrieval granularity, should be quite small. 
   # Can be number of seconds, or granularity string
 
 epochs:         2 # 200
