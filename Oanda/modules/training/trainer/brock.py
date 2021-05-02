@@ -169,7 +169,7 @@ def brock():
     # os.makedirs("")
     for i in range(1000):
         # Sets save_path as the first free slot in the pretrained models folder
-        save_path = f"pre-trained models/markov{markov_order}n_{hidden_sizes}_{args.granularity}_i{i}.pt"
+        save_path = f"pre-trained-models/markov{markov_order}n_{hidden_sizes}_{args.granularity}_i{i}.pt"
         if not os.path.isfile(save_path):
             break
 
