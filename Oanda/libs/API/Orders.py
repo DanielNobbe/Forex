@@ -9,7 +9,7 @@ def filter_dict(Dictionary):
     To_be_deleted = []
     for key, value in Dictionary.items():
         if isinstance(value, dict):
-            Dictionary[key] = FilterDict(Dictionary[key])
+            Dictionary[key] = filter_dict(Dictionary[key])
             if not Dictionary[key]:
                 To_be_deleted.append(key)
         if value == "":

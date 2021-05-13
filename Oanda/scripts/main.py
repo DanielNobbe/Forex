@@ -8,10 +8,10 @@ sys.path.insert(1, path)
 
 from libs.API import *
 from modules.trader.interpreter import Interpreter, VariableSafe
-from modules.training.retrieval import gran_to_sec
+from modules.info.retrieval import gran_to_sec
 from modules.trader.predictor import Predictor
 from modules.training.models import markov_kernel
-import modules.training.retrieval as retrieval
+import modules.info.retrieval as retrieval
 # from libs.API.WorkingFunctions import ReadableOutput
 
 # This does not work, because the args are not updated between runs
@@ -71,7 +71,7 @@ with open(relative_path) as file:
 #     dt = [2*gran_to_sec['D'], gran_to_sec['D']]
 #     hidden_sizes = [8]
 #     model = markov_kernel.MarkovKernel(2, hidden_sizes, 1, dt_settings=dt, instrument=instrument) # Example
-#     pt_path = "pre-trained models/markov2n_[8]_M1_i0.pt"
+#     pt_path = "pre-trained-models/markov2n_[8]_M1_i0.pt"
 #     # model = build_model(cfg)
 #     soft_gran = gran_to_sec[cfg['retrieval']['soft_gran']]
 #     soft_margin = cfg['retrieval']['soft_margin'] * soft_gran

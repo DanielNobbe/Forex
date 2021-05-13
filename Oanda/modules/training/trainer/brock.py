@@ -8,7 +8,7 @@ import torch
 import math
 import torch.nn as nn
 from modules.training.models import * 
-import modules.training.retrieval as retrieval
+import modules.info.retrieval as retrieval
 from torch.utils.data import Dataset, DataLoader
 import os
 
@@ -169,7 +169,7 @@ def brock():
     # os.makedirs("")
     for i in range(1000):
         # Sets save_path as the first free slot in the pretrained models folder
-        save_path = f"pre-trained models/markov{markov_order}n_{hidden_sizes}_{args.granularity}_i{i}.pt"
+        save_path = f"pre-trained-models/markov{markov_order}n_{hidden_sizes}_{args.granularity}_i{i}.pt"
         if not os.path.isfile(save_path):
             break
 

@@ -1,2 +1,4 @@
 .ipynb_checkpoints/
 **/__pycache__/
+Oanda/cache/*
+Oanda/pre-trained-models/*

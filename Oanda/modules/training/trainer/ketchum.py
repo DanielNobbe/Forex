@@ -8,7 +8,7 @@ import torch
 import math
 import torch.nn as nn
 from modules.training.models import * 
-import modules.training.retrieval as retrieval
+import modules.info.retrieval as retrieval
 from torch.utils.data import Dataset, DataLoader
 import os
 
@@ -86,13 +86,13 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
 
                 optimizer.zero_grad()
 
-                output = model(value.unsqueeze(dim=2))
+                output = model(value)
                 # TODO: carry over this hidden state, might allow for
                 # longer sequences
                 # TODO: Find a way to traverse the time series directly,
                     # without taking only a subset
                 # set_trace()
-                loss = loss_fn(output.squeeze(2), target)
+                loss = loss_fn(output, target)
                 losses.append(loss.item())
                 loss.backward()
                 optimizer.step()
@@ -202,7 +202,7 @@ def main_rnn():
     # os.makedirs("")
     for i in range(1000):
         # Sets save_path as the first free slot in the pretrained models folder
-        save_path = f"pre-trained models/RNN_{hidden_size}_{model_granularity}_i{i}.pt"
+        save_path = f"pre-trained-models/RNN_{hidden_size}_{model_granularity}_i{i}.pt"
         if not os.path.isfile(save_path):
             break
 

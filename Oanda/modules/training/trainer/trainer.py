@@ -8,7 +8,7 @@ import torch
 import math
 import torch.nn as nn
 from modules.training.models import * 
-import modules.training.retrieval as retrieval
+import modules.info.retrieval as retrieval
 from torch.utils.data import Dataset, DataLoader
 import os
 import yaml
@@ -165,6 +165,11 @@ def trainer():
     args.start_time = tcfg['time_series']['start_time']
     args.granularity = tcfg['time_series']['granularity']
     args.max_count = 1e9 # Always ok
+    skip_wknd = tcfg['time_series'].get('skip_wknd', True)
+    random_split = tcfg['dataset']['random_split']
+    shuffle = tcfg['dataset']['shuffle']
+    val_split = tcfg['dataset']['val_split']
+    test_split = tcfg['dataset']['test_split']
 ####################################
 
     # history = retrieval.history.download_history(instrument, 
@@ -173,9 +178,8 @@ def trainer():
     dt = retrieval.build_dt(mcfg['dt_settings'])
 
     # dt = [2*retrieval.gran_to_sec['D'], retrieval.gran_to_sec['D']]
-    inputs, targets = retrieval.history.retrieve_training_data(args, dt, only_close=True)
-    random = False
-    train_loader, val_loader, test_loader = retrieval.build_dataset(inputs, targets, val_split=0.4, test_split=0.1, rnd_split=True, shuffle=True)
+    inputs, targets = retrieval.history.retrieve_training_data(args, dt, only_close=True, skip_wknd=skip_wknd)
+    train_loader, val_loader, test_loader = retrieval.build_dataset(inputs, targets, val_split=val_split, test_split=test_split, rnd_split=random_split, shuffle=shuffle)
 
     model = build_model(mcfg, dt)
 
@@ -193,17 +197,20 @@ def trainer():
     min_epochs = tcfg['min_epochs']
     # os.makedirs("")
     save_file = tcfg['model']['pt_path']
+    
+    save_dir = "pre-trained-models"
+    os.makedirs(save_dir, exist_ok=True)
     if '%i' in save_file:
         for i in range(1000):
         # Sets save_path as the first free slot in the pretrained models folder
-        # save_path = "pre-trained models/markov{markov_order}n_{hidden_sizes}_{args.granularity}_i{i}.pt"
-            save_path = "pre-trained models/" + save_file % i
+        # save_path = "pre-trained-models/markov{markov_order}n_{hidden_sizes}_{args.granularity}_i{i}.pt"
+            save_path = os.path.join(save_dir, save_file % i)
             if not os.path.isfile(save_path):
                 break
     else:
-        save_path = "pre-trained models/" + save_file
+        save_path = os.path.join(save_dir, save_file)
     
-    if save_path[-3:0] != '.pt':
+    if save_path[-3:] != '.pt':
         save_path += '.pt'
     
     model_notes = tcfg.get('model_notes', '')

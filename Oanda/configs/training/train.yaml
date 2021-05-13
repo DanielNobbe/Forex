@@ -10,8 +10,15 @@ retrieval:
   
 time_series:
   start_time:   '2016-01-01'
-  granularity:  'D'     # Training granularity. Retrieval granularity will be smaller. 
+  granularity:  'D'     # Retrieval granularity, should be quite small. 
   # Can be number of seconds, or granularity string
+  skip_wknd:    True
+
+dataset:
+  random_split: True # Split data at random into train/val/test sets or now
+  shuffle:      True # Shuffle data during training
+  val_split:    0.4
+  test_split:   0.1
 
 epochs:         2 # 200
 min_epochs:     1
