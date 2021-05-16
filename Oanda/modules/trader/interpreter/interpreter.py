@@ -1,7 +1,7 @@
-''' 
-class Interpreter interprets the outcome of the decider and translates that in an action for the trader
-'''
-
+"""
+The Interpreter handles all trades. It receives predictions from a 
+Predictor, and decides whether to, and how much to trade.
+"""
 # =============================================================================
 # Imports
 # =============================================================================
@@ -23,8 +23,37 @@ with open(this_path + "/safety.yaml") as file:
 allowed_pairs = int_cfg['allowed_pairs']
 
 class Interpreter():
-    
-    def __init__(self, credentials, cfg, predictor):
+    """
+    The Interpreter is an object that tracks the current portfolio,
+    for a specific instrument, and decides on trades. 
+    Its predictor attribute contains a Predictor object, which predicts
+    new prices.
+
+    Attributes:
+    - accountID, access_token: credentials for Oanda
+    - instrument: the instrument, e.g. a currency pair like EUR_USD
+    - config: trading configuration dict, usually from a file in 
+        configs/trading
+    - predictor: Predictor object
+    - upper_bound, lower_bound: max. and min. amount of instrument to 
+        have in portfolio. Trading is disabled in one direction when
+        respective bound is reached.
+    - amount: Value of self.instrument to buy/sell per trade.
+        (in target currency)
+    - size: Number of units of self.instrument in portfolio
+    - owned_value: Current value in base currency in portfolio
+        (equal to number of units)
+    - price: Latest retrieved price of instrument, value of 1 unit
+        (base currency) in the target currency
+    """
+    def __init__(self, credentials: tuple, cfg: dict, predictor: object):
+        """
+        Args:
+            credentials: credentials tuple, with first entry accountID
+                and second access_token
+            cfg: trading config dict, usually from a file in configs/trading/
+            predictor: Predictor object, used to predict next candlestick value
+        """
         self.accountID, self.access_token = credentials
         self.instrument = cfg['instrument']
         self.config = cfg
@@ -44,20 +73,8 @@ class Interpreter():
             "Add to interpreter.yaml after updating safety rules. "
             "Note that base currencies other than EUR do not work "
             "with default buy/sell limits.")
-        
-    # def RiskManager(self):
-    #     OrdersOrderList(self, accountID) # add a restriction based on the orders
-        
-    #     # add a restrictions based on position and cash
-    #     cash = AccountSummary(access_token, accountID)['account']['marginAvailable'] # cash is element in account summary
-    #     portfoliosize = AccountSummary(access_token, accountID)['account']['balance'] # cash is element in account summary
-    #     positions = AccountSummary(access_token, accountID)['account']['openPositionCount']
-        
-    #     maximum_position = min(cash, 0.25*portfoliosize-positions[instrument])
-    #     return maximum_position
     
     def update_position(self, input_):
-        # NAV = float(AccountSummary(self.access_token, self.accountID)[1]['account']['NAV'])
         self.size = (float(
                         PositionsPositionDetails(self.access_token, 
                                                 self.accountID,
@@ -69,11 +86,9 @@ class Interpreter():
                                                 instrument=self.instrument
                                                 )[1]['position']['short']['units'])
                     )
-        self.owned_value = self.size*input_ # In base currency
+        self.owned_value = self.size # In base currency
         self.price = input_
-        # return value
-        # max_trade = 0.0005*NAV # ong 10 euro
-        # print(size*price)
+
         
     def check_risk(self, action, amount=None):
         if amount is None:
