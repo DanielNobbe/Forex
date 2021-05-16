@@ -4,6 +4,8 @@ class HistoryArgs():
     """
     Class to hold arguments for retrieval of historical data.
     TODO: Add checks to this
+    TODO: Use NameSpace object for this if we are doing no checks
+    TODO: Add __slots__ to these objects to decrease object size
     """
     def __init__(self):
         self.instrument = None
@@ -18,6 +20,9 @@ class CandleStickValues():
     Can only be initialised using the from_lists or empty classmethods.
     TODO: Convert this directly to tensors
     TODO: Remove unnecessary information
+    TODO: convert candlestickvalues and instrumentseries data handling to general method that
+        uses dicts to init the __dict__ of objects  
+    TODO: Add __slots__ to these objects to decrease object size  
     """
 
     __create_key = object()
@@ -81,6 +86,10 @@ class InstrumentSeries():
     and stores the metadata: timestamps, volumes and 'complete' (whether
     the current candlestick is completed or still ongoing).
     Can only be initialised using the from_lists or empty class-methods.
+    TODO: Add granularity to instrument series object (and granularity check on extension)
+    TODO: convert candlestickvalues and instrumentseries data handling to general method that
+        uses dicts to init the __dict__ of objects
+    TODO: Add __slots__ to these objects to decrease object size
     """
     def __init__(self):
         """
