@@ -2,6 +2,7 @@ from oandapyV20 import API
 from oandapyV20.exceptions import V20Error
 import oandapyV20.endpoints.instruments as instruments
 from oandapyV20.definitions.instruments import CandlestickGranularity
+from libs.API import API_CONFIG
 from .definitions import *
 from .tools import *
 from .classes import *
@@ -21,52 +22,57 @@ from pdb import set_trace
 """ 
 Functions for retrieving historical data from OANDA API
 
-This module contains multiple functions for retrieving historical
-pricing data from OANDA, and functions for savind the data on disk.
+This module contains functions for retrieving historical pricing data 
+from OANDA, and functions for saving the data on disk.
 
 For retrieving data, an instrument name is required.
 The available pairs can be found at https://www.oanda.com/rw-en/trading/spreads-margin/
 The formatting is as follows: '[base currency]_[quote currency]' (w/o brackets)
 """
 
-# TODO: Create a 'history' class for returning historical data
-# TODO: Find a way to load the historical data from disk (allows use of larger datasets)
-# TODO: Add __slots__ to these objects to decrease object size
-# TODO: Add granularity to instrument series object (and granularity check on extension)
-# TODO: convert candlestickvalues and instrumentseries data handling to general method that
-#       uses dicts to init the __dict__ of objects
-# TODO: Add function that computes end data from granularity and vice versa
 MAX_COUNT_PER_REQUEST = 5000 # Dependent on API, so constant.
 
-# TODO: Check if unix timestamps actually correct with time zones
-# TODO: Create function that handles granularity (requires converting granularity to count)
-        # We receive granularity in the request though, might just use that one
-def retrieve(instrument, start_time, granularity, count, real_account = False, 
-    series_obj = None, inside=False):
+def retrieve(
+        instrument: str, 
+        start_time: str, 
+        granularity: str, 
+        count: int, 
+        real_account: bool = False, 
+        series_obj: object = None, 
+        inside: bool = False,
+    ):
     """
-    Retrieve instrument values for a time period between
-    start_time and end_time, with count intervals.
+    Retrieve `count` instrument values for a time period after `start_time`,
+    for instrument `instrument`.
 
     Args: 
-        instrument (string): instrument name, 
+        instrument: instrument name, 
             formatted as '[base currency]_[quote currency]' (w/o brackets)
             see https://www.oanda.com/rw-en/trading/spreads-margin/ 
             for options
-        start_time (string): start time in 'YYYY-MM-DDTHH:MM:SSZ' format
-            can also be 'YYYY-MM-DD' for dates.
-        end_time (string): end time in same format as start_time
-        count (int): number of samples to retrieve
-
+        start_time: start time in 'YYYY-MM-DDTHH:MM:SSZ' format.
+            Can also be 'YYYY-MM-DD' for dates.
+        granularity: time between retrieved samples.
+            Options can be found in ./definitions.py
+        count: number of samples to retrieve
+        real_account: whether to use real account, if False uses demo
+            account. (currently True is not supported)
+    Returns: tuple:
+        [0]: series_obj (InstrumentSeries object) containing a retrieved 
+            time series
+        [1]: Latest timestamp of time series (used when retrieving 
+            multiple blocks)
     TODO: What is inside for? Is this not captured with series_obj being None?
+    TODO: Improve the switching between demo and real accounts. Should
+        just pass the account type as an argument when used from train
+        or trade methods.
     """
-
     # Maximum count is 5000
     if count > 5000:
         # Split the time up into multiple pieces
         # for now, just set count to 5000
         number_of_periods = ceildiv(count, MAX_COUNT_PER_REQUEST)
         series_obj = None
-        # count_thus_far = 0
         count_left = count
         while count_left > 0:
             # Make sure that exactly count samples are retrieved
@@ -74,12 +80,10 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
                 next_count = MAX_COUNT_PER_REQUEST
             else:
                 next_count = int(count_left)
-            # with open(os.devnull, 'w') as sys.stdout:
             series_obj, end_time = retrieve(instrument, start_time, granularity,
                                         next_count, series_obj=series_obj, inside=True)
             
             print(f'Downloading. Samples left {count_left}. Timestamp: {unix_to_date(end_time)}\r', end="")
-            # count_thus_far += next_count
             
             count_left -= next_count
             if end_time == False:
@@ -91,7 +95,6 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
 
         return series_obj, end_time
 
-    
     params = {
         'from': start_time,
         'granularity': granularity,
@@ -103,7 +106,9 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
 
     # Define API with our access token (for demo acct)
     if not real_account:
-        api = API(access_token='378d83764609aa3a4eb262663b7c02ef-482ed5696d2a3cede7fca4aa7ded1c76')
+        access_token = API_CONFIG['demo']['access_token']
+        # accountID = API_CONFIG['demo']['accountID']
+        api = API(access_token=access_token)
     else:
         raise NotImplementedError("Real account has not been implemented.")
 
@@ -135,7 +140,13 @@ def retrieve(instrument, start_time, granularity, count, real_account = False,
         else:
             return series_obj, timestamps[-1]
 
+
 def download_history(instrument, start_time, granularity, count):
+    """
+    Downloads history, with handling for V20 errors (such as connection
+    errors). Tries multiple times if it fails.
+    Args: See retrieve function.
+    """
     max_tries = 3
     for i in range(max_tries):
         try:
@@ -145,10 +156,20 @@ def download_history(instrument, start_time, granularity, count):
         except V20Error as err:
             print("Failed to retrieve data. Error: ", err)
 
+
 def retrieve_cache(args, download=False):
-    # we're going to retrieve a large amount of data here,
-    # using a small granularity. Then, we can use this data to split
-    # into larger-granularity data with certain offsets.
+    """
+    Opens cached file on disk with arguments args. If the file does not
+    exist, it is created by retrieving the data from Oanda.
+    Args:
+        args: HistoryArgs object, containing arguments for history 
+            retrieval.
+        download: If True, downloads data if it is not available on disk.
+    Returns:
+        cache: InstrumentSeries object. Should be same as if calling
+            `download_history` with unpacked `args`. (Or similar,
+            if cached on earlier date)
+    """
     os.makedirs('cache', exist_ok=True)
     pickle_path = f"cache/{args.instrument}_s{args.start_time}_{args.granularity}_{args.max_count}"
 
@@ -160,17 +181,51 @@ def retrieve_cache(args, download=False):
             cache = pickle.load(file)
     return cache
     
-# TODO: Check if times are utc
 
 def retrieve_inference_data(
-    instrument,
-    dt = [ 2*gran_to_sec['D'], gran_to_sec['D']  ], # time before target in seconds to return values for
-    soft_retrieve = True,
-    soft_margin = 3000,
-    only_close = True,
-    realtime=False,
-    skip_wknd = True,
+        instrument: str,
+        dt: list = [ 2*gran_to_sec['D'], gran_to_sec['D']  ], # time before target in seconds to return values for
+        soft_retrieve: bool = True,
+        soft_margin: float = 3000,
+        only_close: bool = True,
+        realtime: bool = False,
+        skip_wknd: bool = True,
     ):
+    """
+    Retrieves data for inference. Loads data until current moment, 
+    and converts this into the 1D tensor required to run one inference
+    step. The final value corresponds to the current time, resulting in 
+    a corresponding (unknown) target value in the future.
+    Args:
+        instrument: instrument/currency pair. Example: 'EUR_USD'
+        dt: Used to define the time offsets corresponding to the required
+            datapoints for the predictive model.
+            Final element defines how much time in the future the prediction
+            is for. (Each element - final element) is the time difference
+            between now and the corresponding datapoint.
+            `[element - dt[-1] for element in dt] = relative_times`
+            When adding a 0 to the end of `dt`, each value corresponds 
+            to a candlestick in the required sequence, where the first 
+            is only in the `values` list, and the last is in the future, 
+            to be predicted by the model.
+        soft_retrieve: If True, soft retrieval is allowed. This means that 
+            when attempting to find a candlestick corresponging to a 
+            time-offset, the closest candlestick is used, as long as the
+            time of that candlestick is within `soft_margin` seconds of 
+            the requested time.
+        soft_margin: Margin in seconds to use for soft retrieval.
+        only_close: If True, returns a list with only the `close` values
+            for each candlestick.
+        realtime: If True, raises error when not all required data is 
+            available. 
+        skip_wknd: If True, weekend days are skipped over when retrieving
+            candlesticks. The retrieval moves to the last Friday before
+            the weekend if a weekend day's candlestick is requested.
+    Returns:
+        torch.tensor: 1D tensor with values corrsponding to the candle-
+        sticks needed to make a prediction, as defined in `dt`.
+    TODO : Move the ValueError handling to a higher level
+    """
     # Same as for training, except only one sequence (and full one at that)
     # and no target value. Last dt should be now
     now = datetime.datetime.now().timestamp()
@@ -216,8 +271,6 @@ def retrieve_inference_data(
                     value = None
                     values[-idx] = value # Having None here will prevent it from being added
                 continue
-            # check if h_key not too far away
-            # timedict[h_time] if h_time in timedict else timedict[min(timedict.keys(), key=lambda k: abs(k-h_time))]
         else:
             value = timedict.get(h_time, None)
         if value is not None and only_close:
@@ -227,18 +280,61 @@ def retrieve_inference_data(
     return torch.tensor(values)
 
 def retrieve_training_data(
-    args,
-    dt = [ 2*gran_to_sec['D'], gran_to_sec['D']  ], # time before target in seconds to return values for
-    only_close = True,
-    full_sequence = False, # Give full sequence in inputs, including target
-    targets = True,
-    soft_retrieve = True,
-    soft_margin = 3000,
-    skip_wknd = True,
-        ):
-        
-        # TODO: Make the offsets 'soft', so it does not have to be exactly dt values
-        # TODO: Make sure this works when not using only close values
+        args: HistoryArgs,
+        dt: list = [ 2*gran_to_sec['D'], gran_to_sec['D']  ], # time before target in seconds to return values for
+        only_close: bool = True,
+        full_sequence: bool = False, # Give full sequence in inputs, including target
+        soft_retrieve: bool = True,
+        soft_margin: float = 3000,
+        skip_wknd: bool = True,
+    ):
+    """
+    Creates lists of values and targets, where the the values 
+    correspond to the offsets wrt each target defined in `dt`. This
+    method returns many such pairs, so is useful for creating a dataset
+    for training models. Can return only close values, or all values
+    (latter is untested).
+    Args:
+        args: General arguments for retrieval, as defined in HistoryArgs.
+        dt: Used to define the time offsets corresponding to the required
+            datapoints for the predictive model.
+            Each element defines the offset of that candlestick wrt
+            the target.
+            `[element for element in dt] = target_time - value_i_time`
+            When adding a 0 to the end of `dt`, each value corresponds 
+            to a candlestick in the required sequence, where the last 
+            one is only in the `targets` list.
+        only_close: If True, uses only the close values of a candlestick.
+        full_sequence: If True, only returns a complete sequence of values
+            for each target, where the target is the last value of the
+            sequence.
+        soft_retrieve: If True, soft retrieval is allowed. This means that 
+            when attempting to find a candlestick corresponging to a 
+            time-offset, the closest candlestick is used, as long as the
+            time of that candlestick is within `soft_margin` seconds of 
+            the requested time.
+        soft_margin: Margin in seconds to use for soft retrieval.
+        skip_wknd: If True, weekend days are skipped over when retrieving
+            candlesticks. The retrieval moves to the last Friday before
+            the weekend if a weekend day's candlestick is requested.
+    Returns:
+        if full_sequence:
+            list[list]: list of lists of values, where each value corresponds 
+            to an entry of `dt`, and the final value to the target 
+            (at offset 0). 
+            Each list of values corresponds to one timestep in the 
+            retrieved interval.
+        else:
+            tuple:
+            [0]: list[list]: list of lists of values, where each value corresponds 
+                to an entry of `dt`. 
+                Each list of values corresponds to one timestep in the 
+                retrieved interval.
+            [1]: list: list of targets, where each target corresponds to one 
+                value list in [0]. The target is the final value of a 
+                sequence, and should be predicted by a model.
+    TODO: Make sure this works when not using only close values
+    """
         cache = retrieve_cache(args, download=True)
 
         timedict = cache.timedict
@@ -262,23 +358,19 @@ def retrieve_training_data(
                 if skip_wknd:
                     h_time, offset = skip_weekend(h_time, time,
                                                 delta, offset)
-                if not h_time in timedict and soft_retrieve: # Check if this works correctly
+                if not h_time in timedict and soft_retrieve:
                     h_key = sd_closest(timedict, h_time)
                     if h_key - h_time < soft_margin:
                         value = timedict[h_key]
                     else:
                         value = None
                         values_i[-idx] = value
-                        # values_i.append(value) # Having None here will prevent it from being added
                         continue
-                    # check if h_key not too far away
-                    # timedict[h_time] if h_time in timedict else timedict[min(timedict.keys(), key=lambda k: abs(k-h_time))]
                 else:
                     value = timedict.get(h_time, None)
                 if value is not None and only_close:
                     value = value[-1] # final value is close value
                 values_i[-idx] = value
-                # values_i.append(value)
             if full_sequence:
                 values_i.append(target)
             if None in values_i:
@@ -299,12 +391,46 @@ def retrieve_RNN_data(
     soft_retrieve = True,
     soft_margin = 3600, # Max number of seconds the soft retrieval may deviate from requested time
         ):
-        # TODO: Make the offsets 'soft', so it does not have to be exactly dt values
-        # TODO: Make sure this works when not using only close values
+    """
+    Retrieves a dataset for RNNs. An RNN requires a sequence of values
+    and a sequence of targets. If predicting a time-series, the values 
+    and targets should be from the same series, with an offset between them. 
+    E.g. at value t=1, target is from t=2, etc for the complete sequence.
+    Besides this, similar to the `retrieve_training_data` fuction.
+    Args:
+        args: General arguments for retrieval, as defined in HistoryArgs.
+        dt: Used to define the time offsets corresponding to the required
+            datapoints for the predictive model.
+            Each element defines the offset of that candlestick wrt
+            the final target value. 
+            `[element for element in dt] = final_target_time - value_i_time`
+            When adding a 0 to the end of `dt`, each value corresponds to a 
+            candlestick in the required sequence, where the first is only 
+            in the `values` list, and the last only in the `targets` list.
 
+        only_close: If True, uses only the close values of a candlestick.
+        soft_retrieve: If True, soft retrieval is allowed. This means that 
+            when attempting to find a candlestick corresponging to a 
+            time-offset, the closest candlestick is used, as long as the
+            time of that candlestick is within `soft_margin` seconds of 
+            the requested time.
+        soft_margin: Margin in seconds to use for soft retrieval.
+    Returns: tuple:
+        [0]: list[list]: list of lists of values, where each value corresponds 
+                to an entry of `dt`. 
+                Each list of values corresponds to one timestep in the 
+                retrieved interval. 
+        [1]: list[list]: list of lists of targets, where each target list 
+            corresponds to one value list in [0]. The target list is from 
+            the same sequence as the corresponding value list, only incremented 
+            with 1 dt-step. As such, its first value is the second value of 
+            the value list, and its last value the candlestick corresponding 
+            to an offset of 0.
+            It should be predicted by the RNN model.
+    TODO: Make sure this works when not using only close values
+    """
         # RNN requires an input sequence, and a target sequence, which
         # overlap except for the first and last value.
-        # inputs = range(0,20); target = range(1,21)
         cache = retrieve_cache(args, download=True)
 
         timedict = cache.timedict
@@ -322,7 +448,7 @@ def retrieve_RNN_data(
             targets_i = []
             for delta in dt:
                 h_time = time - delta
-                if not h_time in timedict and soft_retrieve: # Check if this works correctly
+                if not h_time in timedict and soft_retrieve:
                     h_key = sd_closest(timedict, h_time)
                     if h_key - h_time < soft_margin:
                         value = timedict[h_key]
@@ -330,12 +456,9 @@ def retrieve_RNN_data(
                         value = None
                         values_i.append(value) # Having None here will prevent it from being added
                         continue
-                    # check if h_key not too far away
-                    # timedict[h_time] if h_time in timedict else timedict[min(timedict.keys(), key=lambda k: abs(k-h_time))]
                 else:
                     value = timedict.get(h_time, None)
                     
-                # print("F:", h_time)
                 if value is not None and only_close:
                     value = value[-1] # final value is close value
                 values_i.append(value)
@@ -343,7 +466,6 @@ def retrieve_RNN_data(
 
             if None in values_i:
                 empty += 1
-                # print("Not available")
                 continue
             targets_i.pop(0)
             targets_i.append(target)
@@ -356,6 +478,10 @@ def retrieve_RNN_data(
         return values, targets
 
 def test():
+    """
+    Function for testing the functions in this file. 
+    Runs when running this file.
+    """
     args = HistoryArgs()
     args.instrument = "EUR_USD"
     args.start_time = "2016-01-01"
@@ -364,23 +490,7 @@ def test():
 
     cache = retrieve_cache(args, download=True)
 
-# TODO: Add function that gathers extra data:
-"""
-Using an offset, we can use the same granularity to gather a lot more data.
-This means that we can, for instance in a one-day granularity,
-gather a input sample from minute i on day 1 and minute i on day 2,
-for all possible i. This means a much larger amount of data to train 
-on.
-"""
-
 if __name__ == "__main__":
 
-    # instrument = "EUR_USD"
-    # start_time = "2019-01-01"
-    # # end_time = "2020-10-25"
-    # granularity = "H3"
-    # count = 6000
-    
-    # download_history(instrument, start_time, granularity, count)
     test()
     
