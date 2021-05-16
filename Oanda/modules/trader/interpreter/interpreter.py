@@ -176,7 +176,7 @@ class Interpreter():
         print(readable_output(data))
         try:
             OrdersOrderCreate(self.access_token, self.accountID, data=data)
-            print("Bought ", units, " ", self.instrument, " value of trade: ", self.size*latest_value)
+            print("Bought ", units, " ", self.instrument, " value of trade: ", units*latest_value)
         except Exception as e:
-            print("Order was NOT accepted, value of trade: ", self.size*latest_value)
+            print("Order was NOT accepted, value of trade: ", units*latest_value)
             print("Error: ", e)
