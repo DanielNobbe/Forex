@@ -2,9 +2,6 @@
 The Interpreter handles all trades. It receives predictions from a 
 Predictor, and decides whether to, and how much to trade.
 """
-# =============================================================================
-# Imports
-# =============================================================================
 
 from libs.API.Oanda import OrdersOrderCreate, PositionsPositionDetails
 from libs.API.Orders import MarketOrder, filter_dict
@@ -13,9 +10,7 @@ from libs.API.WorkingFunctions import readable_output
 import yaml
 import sys, os
 
-# =============================================================================
-# Class
-# =============================================================================
+# Import safety config
 this_path = os.path.relpath(__file__+'/../')
 with open(this_path + "/safety.yaml") as file:
     int_cfg = yaml.full_load(file)
@@ -30,21 +25,21 @@ class Interpreter():
     new prices.
 
     Attributes:
-    - accountID, access_token: credentials for Oanda
-    - instrument: the instrument, e.g. a currency pair like EUR_USD
-    - config: trading configuration dict, usually from a file in 
-        configs/trading
-    - predictor: Predictor object
-    - upper_bound, lower_bound: max. and min. amount of instrument to 
-        have in portfolio. Trading is disabled in one direction when
-        respective bound is reached.
-    - amount: Value of self.instrument to buy/sell per trade.
-        (in target currency)
-    - size: Number of units of self.instrument in portfolio
-    - owned_value: Current value in base currency in portfolio
-        (equal to number of units)
-    - price: Latest retrieved price of instrument, value of 1 unit
-        (base currency) in the target currency
+        accountID, access_token: credentials for Oanda
+        instrument: the instrument, e.g. a currency pair like EUR_USD
+        config: trading configuration dict, usually from a file in 
+            configs/trading
+        predictor: Predictor object
+        upper_bound, lower_bound: max. and min. amount of instrument to 
+            have in portfolio. Trading is disabled in one direction when
+            respective bound is reached.
+        amount: Value of self.instrument to buy/sell per trade.
+            (in target currency)
+        size: Number of units of self.instrument in portfolio
+        owned_value: Current value in base currency in portfolio
+            (equal to number of units)
+        price: Latest retrieved price of instrument, value of 1 unit
+            (base currency) in the target currency
     """
     def __init__(self, credentials: tuple, cfg: dict, predictor: object):
         """
@@ -75,6 +70,12 @@ class Interpreter():
             "with default buy/sell limits.")
     
     def update_position(self, input_):
+        """
+        Updates the self.size, self.owned_value and self.price attributes
+        with their latest values.
+        Args:
+            input_: Current value of 1 unit of base currency in target currency
+        """
         self.size = (float(
                         PositionsPositionDetails(self.access_token, 
                                                 self.accountID,
@@ -85,13 +86,32 @@ class Interpreter():
                                                 self.accountID, 
                                                 instrument=self.instrument
                                                 )[1]['position']['short']['units'])
-                    )
+                    ) # short values are returned negative
         self.owned_value = self.size # In base currency
         self.price = input_
 
         
     def check_risk(self, action, amount=None):
+        """
+        Checks whether we do not take too much risk. Currently only
+        limits the amount owned to within the defined upper_ and 
+        lower_bound. Can be used to check whether a given trade is 
+        allowed (by specifying amount), or to check whether we can trade
+        at all and give the max amount to buy/sell (by not specifying 
+        amount). 
+        Args:
+            action: 'buy' or 'sell', to specify what kind of trade to make.
+            amount: The amount (in target currency) to trade. Should be negative
+                when selling.
+        Returns:
+            tuple:
+                [0]: boolean whether trade is allowed
+                [1]: amount to trade
+        TODO: Should not need to define 'buy' or 'sell', unless amount
+            is not specified.
+        """
         if amount is None:
+            # amount not specified, so determines max amount to trade
             if action == 'buy':
                 amount = int((self.upper_bound-self.owned_value)/self.price) # A unit is 1 dollar here? TODO:
             elif action == 'sell':
@@ -114,25 +134,28 @@ class Interpreter():
                 print("Trade not allowed, attempting to increase debt to more than lower bound.")
                 return False, amount
    
-# =============================================================================
-#         if prediction > input:
-#             if size*price < upper_bound:
-#                 self.units = int(round(max_trade/price))
-#             else:
-#                 self.units = None
-#         else:
-#             if size*price > -upper_bound:
-#                 self.units = -int(round(max_trade/price))
-#             else:
-#                 self.units = None
-# =============================================================================
-
     def prepare_trade(self, input_, prediction):
-        # Determines whether to buy or sell
-        # based on prediction, and checks this with risk management
-        # TODO: Should implement more complex strategies here
-        # TODO: Add max amount to buy here, use config file
-        # TODO: Modify to allow for max buy/sell through calculation in check_risk
+        """
+        Function used to prepare trade. Uses prediction and current value
+        to determine the action to take, and checks that action with the
+        check_risk method. 
+        Current strategy is to buy if prediction is larger than current 
+        value, and sell if it is lower.
+        Could be expanded to perform more checks, retrieve some information,
+        or to use a different trading strategy.
+        Args:
+            input_: Value of target currency per unit of base currency
+            prediction: Predicted value of target currency. 
+                The time corresponding to this prediction is dependent
+                on the model/predictor.
+        Returns:
+            tuple:
+                [0]: 'buy' or 'sell' if the chosen action is allowed,
+                    or False if it is not allowed or no action should
+                    be taken.
+                [1]: amount to trade. Also returned if trade is not made
+        TODO: Should implement more complex strategies here
+        """
         if prediction > input_:
             # Price will go up, so we should buy
             # amount = self.amount
@@ -154,26 +177,34 @@ class Interpreter():
                 return False, amount_ret
 
     def to_units(self, amount):
-        # convert to units. 1 of base currency is 1 unit.
+        """
+        Convert an amount in target currency to units (in base currency).
+        A unit should be an integer multiple of the base currency.
+        """
         return int(amount / self.price)
 
-    # TODO: Reorganise these function calls (this should be trade_main or so)
     def perform_trade(self):
-        # retrieve_current_price(access_token, accountID)
+        """
+        Overarching method to perform a trade. Calls the predictor for 
+        a prediction, and then the trade method to perform the trade.
+
+        TODO: Predictor returns latest closing value, rather than real current value. 
+        """
         prediction, latest_value = self.predictor()
-        # TODO: Predictor returns latest closing value, rather than real current value. 
-        # check whether this works well#
         self.trade(prediction, latest_value)
 
     def trade(self, prediction, latest_value):
-        # input_ is the current value. We don't need it, 
-        # if we keep track of it here. Where does it come from
-        # though?
-
+        """
+        Perform a trade, using the prediction given by the predictor.
+        Calls prepare_trade method to make decisions, then uses API
+        to request trade.
+        Args:
+            prediction: Predicted value that target currency of instrument
+                will have in the future. How much time in the future is defined 
+                by predictor.
+            latest_value: Latest value of instrument.            
+        """
         self.update_position(latest_value)
-        # self.upper_bound = 20000.
-        # self.lower_bound = -20000. # when going short
-        # TODO: move history/retrieval from training to info folder, should be 'standalone'
         buy_or_sell_allowed, amount = self.prepare_trade(latest_value, prediction)
         if buy_or_sell_allowed:
             units = self.to_units(amount)
