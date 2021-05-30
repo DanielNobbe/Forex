@@ -335,54 +335,54 @@ def retrieve_training_data(
                 sequence, and should be predicted by a model.
     TODO: Make sure this works when not using only close values
     """
-        cache = retrieve_cache(args, download=True)
+    cache = retrieve_cache(args, download=True)
 
-        timedict = cache.timedict
+    timedict = cache.timedict
 
-        targets = []
-        values = []
-        empty = 0
+    targets = []
+    values = []
+    empty = 0
 
-        # dt should be in ascending order (i.e. increasing time)
-        dt.sort(reverse=False)
+    # dt should be in ascending order (i.e. increasing time)
+    dt.sort(reverse=False)
 
-        for time in list(timedict.keys()):
-            # begins at earliest time
-            offset = 0
-            target = timedict[time]
-            if only_close:
-                target = target[-1]
-            values_i = [0]*len(dt)
-            for idx, delta in enumerate(dt):
-                h_time = time - delta - offset
-                if skip_wknd:
-                    h_time, offset = skip_weekend(h_time, time,
-                                                delta, offset)
-                if not h_time in timedict and soft_retrieve:
-                    h_key = sd_closest(timedict, h_time)
-                    if h_key - h_time < soft_margin:
-                        value = timedict[h_key]
-                    else:
-                        value = None
-                        values_i[-idx] = value
-                        continue
+    for time in list(timedict.keys()):
+        # begins at earliest time
+        offset = 0
+        target = timedict[time]
+        if only_close:
+            target = target[-1]
+        values_i = [0]*len(dt)
+        for idx, delta in enumerate(dt):
+            h_time = time - delta - offset
+            if skip_wknd:
+                h_time, offset = skip_weekend(h_time, time,
+                                            delta, offset)
+            if not h_time in timedict and soft_retrieve:
+                h_key = sd_closest(timedict, h_time)
+                if h_key - h_time < soft_margin:
+                    value = timedict[h_key]
                 else:
-                    value = timedict.get(h_time, None)
-                if value is not None and only_close:
-                    value = value[-1] # final value is close value
-                values_i[-idx] = value
-            if full_sequence:
-                values_i.append(target)
-            if None in values_i:
-                empty += 1
-                continue
-            
-            targets.append(target)
-            values.append(values_i)
-        print(f"Missed {empty} samples")
+                    value = None
+                    values_i[-idx] = value
+                    continue
+            else:
+                value = timedict.get(h_time, None)
+            if value is not None and only_close:
+                value = value[-1] # final value is close value
+            values_i[-idx] = value
         if full_sequence:
-            return values
-        return values, targets
+            values_i.append(target)
+        if None in values_i:
+            empty += 1
+            continue
+        
+        targets.append(target)
+        values.append(values_i)
+    print(f"Missed {empty} samples")
+    if full_sequence:
+        return values
+    return values, targets
 
 def retrieve_RNN_data(
     args,
@@ -429,53 +429,53 @@ def retrieve_RNN_data(
             It should be predicted by the RNN model.
     TODO: Make sure this works when not using only close values
     """
-        # RNN requires an input sequence, and a target sequence, which
-        # overlap except for the first and last value.
-        cache = retrieve_cache(args, download=True)
+    # RNN requires an input sequence, and a target sequence, which
+    # overlap except for the first and last value.
+    cache = retrieve_cache(args, download=True)
 
-        timedict = cache.timedict
+    timedict = cache.timedict
 
-        targets = []
-        values = []
-        empty = 0
+    targets = []
+    values = []
+    empty = 0
 
-        for time in list(timedict.keys()):
-            # begins at earliest time
-            target = timedict[time]
-            if only_close:
-                target = target[-1]
-            values_i = []
-            targets_i = []
-            for delta in dt:
-                h_time = time - delta
-                if not h_time in timedict and soft_retrieve:
-                    h_key = sd_closest(timedict, h_time)
-                    if h_key - h_time < soft_margin:
-                        value = timedict[h_key]
-                    else:
-                        value = None
-                        values_i.append(value) # Having None here will prevent it from being added
-                        continue
+    for time in list(timedict.keys()):
+        # begins at earliest time
+        target = timedict[time]
+        if only_close:
+            target = target[-1]
+        values_i = []
+        targets_i = []
+        for delta in dt:
+            h_time = time - delta
+            if not h_time in timedict and soft_retrieve:
+                h_key = sd_closest(timedict, h_time)
+                if h_key - h_time < soft_margin:
+                    value = timedict[h_key]
                 else:
-                    value = timedict.get(h_time, None)
-                    
-                if value is not None and only_close:
-                    value = value[-1] # final value is close value
-                values_i.append(value)
-                targets_i.append(value)
+                    value = None
+                    values_i.append(value) # Having None here will prevent it from being added
+                    continue
+            else:
+                value = timedict.get(h_time, None)
+                
+            if value is not None and only_close:
+                value = value[-1] # final value is close value
+            values_i.append(value)
+            targets_i.append(value)
 
-            if None in values_i:
-                empty += 1
-                continue
-            targets_i.pop(0)
-            targets_i.append(target)
-            # store indiv. lists in list
-            values.append(values_i)
-            targets.append(targets_i)
+        if None in values_i:
+            empty += 1
+            continue
+        targets_i.pop(0)
+        targets_i.append(target)
+        # store indiv. lists in list
+        values.append(values_i)
+        targets.append(targets_i)
 
-        print(f"Missed {empty} samples")
-        print(f"Returning {len(values)} samples")
-        return values, targets
+    print(f"Missed {empty} samples")
+    print(f"Returning {len(values)} samples")
+    return values, targets
 
 def test():
     """
