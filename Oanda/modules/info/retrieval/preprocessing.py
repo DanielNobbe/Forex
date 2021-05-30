@@ -8,6 +8,11 @@ import torch.tensor
 from pdb import set_trace
 
 class CandleStickDataset(Dataset):
+    """
+    Pytorch Dataset for CandleSticks. Can be initialised with value 
+    (`input`) and target values or vectors. When iterated on, returns a 
+    new value-target pair.
+    """
     def __init__(self, inputs, targets):
         assert len(inputs) == len(targets), "Inputs and targets not same length!"
         try:
@@ -23,6 +28,11 @@ class CandleStickDataset(Dataset):
         return self.inputs[idx], self.targets[idx]
 
 class CandleStickSequenceDataset(Dataset):
+    """
+    PyTorch Dataset for a single sequence of values. Can be used for 
+    situations where the full sequence is required, such as when working
+    with filters or RNNs.
+    """
     def __init__(self, inputs):
         # does not need super init
         self.inputs = torch.tensor(inputs)
@@ -34,20 +44,46 @@ class CandleStickSequenceDataset(Dataset):
         return self.inputs[idx]
 
 def next_values(history: InstrumentSeries, selection="close"):
-    # This should give the immediate next value at each timestep
+    """
+    Gives all values of an InstrumentSeries object except the first one.
+    Can be useful for RNNs.
+    """
     assert selection=="close", "Other selections than close not yet implemented"
     values = history.values.closes[1:] # Take all values except first one
     return values 
 
 def sequence_of_values(history: InstrumentSeries, selection="close"):
-    # Gives the current value of each timestep
+    """
+    Gives the sequence of values in an InstrumentSeries object.
+    """
     assert selection=="close", "Other selections than close not yet implemented"
     values = history.values.closes
     return values
 
-def build_dataset(inputs: list, targets: list, selection="close",
+def build_dataloader(inputs: list, targets: list,
         val_split=0.1, test_split=0.2, rnd_split=True, shuffle=True,
         batch_size=1, num_workers=2,):
+    """
+    Converts a list of values (`inputs`) and targets into a triplet
+    of dataloaders, for training, validation and testing respectively.
+    Args:
+        `inputs`: list of values for the (value,target) pairs.
+        `targets`: list of targets for the (value,target) pairs.
+        `val_split`: fraction of samples to use for validation.
+        `test_split`: fraction of samples to use for testing. Any samples
+            not used for validation and testing will be used for training.
+        `rnd_split`: If True, split dataset randomly but conserve order
+        `shuffle`: If True, data is shuffled when dataloader returns it,
+            so the order is randomised.
+        `batch_size`: Batch size of the batches returned by the dataloaders.
+        `num_workers`: Number of workers to use for dataloading. 
+            See https://pytorch.org/docs/stable/data.html#multi-process-data-loading
+    Returns:
+        tuple:
+            [0]: dataloader for training
+            [1]: dataloader for validation
+            [2]: dataloader for testing
+    """
     # if sequence_set:
         # dataset = CandleStickSequenceDataset(inputs)
     # else:
@@ -87,60 +123,3 @@ def build_dataset(inputs: list, targets: list, selection="close",
                             num_workers=num_workers, sampler=test_sampler)
 
     return train_dataloader, val_dataloader, test_dataloader
-
-def build_simple_dataset(history: InstrumentSeries, selection="close", 
-    val_split=0.1, test_split=0.2, random=True, batch_size=1):
-    """
-    Build dataset that only looks back 1 timestep. 
-    """
-    inputs = sequence_of_values(history)[:-1] 
-    # Don't include last entry
-    targets = next_values(history)
-
-    build_dataset(inputs, targets,
-        val_split=0.1, test_split=0.2, random=True, batch_size=1)
-
-    dataset = CandleStickDataset(inputs, targets)
-
-    val_size = int(val_split * len(dataset))
-    test_size = int(test_split * len(dataset))
-    train_size = len(dataset) - val_size - test_size # Such an annoying interface
-    splits = [train_size, val_size, test_size]
-
-    if random:
-
-        train, val, test = random_split(dataset, splits)
-        train_dataloader = DataLoader(train, batch_size=1, # Larger batch size not yet implemented
-                        shuffle=True, num_workers=0)
-        val_dataloader = DataLoader(val, batch_size=1, # Larger batch size not yet implemented
-                            shuffle=True, num_workers=0)
-        test_dataloader = DataLoader(test, batch_size=1, # Larger batch size not yet implemented
-                            shuffle=True, num_workers=0)
-    else:
-        indices = list(range(len(dataset)))
-        train_indices = indices[0:train_size+1]
-        val_indices = indices[train_size+1:train_size+val_size+1]
-        test_indices = indices[train_size+val_size+1:]
-
-        train_sampler = SubsetRandomSampler(train_indices)
-        val_sampler = SubsetRandomSampler(val_indices)
-        test_sampler = SubsetRandomSampler(test_indices)
-
-        train_dataloader = DataLoader(dataset, batch_size=batch_size, # Larger batch size not yet implemented
-                        num_workers=0, sampler=train_sampler)
-        val_dataloader = DataLoader(dataset, batch_size=batch_size, # Larger batch size not yet implemented
-                            num_workers=0, sampler=val_sampler)
-        test_dataloader = DataLoader(dataset, batch_size=batch_size, # Larger batch size not yet implemented
-                            num_workers=0, sampler=test_sampler)
-
-    return train_dataloader, val_dataloader, test_dataloader
-
-
-# This should be combined in some way with the 'original' time series,
-# where each value is in its normal spot. 
-# It should be possible to feed both lists or sequences to the training
-# functions, and they should choose which part of the original sequence
-# to use, such as the last 10 values.
-# Do we discard the timestamps during training?
-# Time interval should be a configurable variable, that should be stored
-# for each trained model
