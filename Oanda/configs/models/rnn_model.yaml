@@ -1,0 +1,17 @@
+instrument: 'EUR_USD'
+dt_settings:
+  granularity:    'D' # use a string to use default granularity, check history.py (TODO!)
+  no_samples:     3 # Number of previous samples with granularity to use (TODO!)
+  # gap:            0   # Gap between last sample and target/prediction. Leave out or set zero to have same gap as granularity
+  # TODO: Other ways of defining this
+architecture:
+  model_type:     'RNN'
+  args:           # Model specific arguments
+    input_size:   3 # Should be same as 'no_samples' for markov_kernel
+    hidden_size: [   # Should be list with the same number of entries as layers in the network
+      8,
+    ]
+    output_size:  1   # Always 1 for time series, unless we're moving on to predicting candlesticks?
+  name:           'markov_kernel_2n_8d_3in' # optional, name for pretrained files (or should this be in training file?)
+
+
