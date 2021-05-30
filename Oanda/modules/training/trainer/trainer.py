@@ -179,7 +179,7 @@ def trainer():
 
     # dt = [2*retrieval.gran_to_sec['D'], retrieval.gran_to_sec['D']]
     inputs, targets = retrieval.history.retrieve_training_data(args, dt, only_close=True, skip_wknd=skip_wknd)
-    train_loader, val_loader, test_loader = retrieval.build_dataset(inputs, targets, val_split=val_split, test_split=test_split, rnd_split=random_split, shuffle=shuffle)
+    train_loader, val_loader, test_loader = retrieval.build_dataloader(inputs, targets, val_split=val_split, test_split=test_split, rnd_split=random_split, shuffle=shuffle)
 
     model = build_model(mcfg, dt)
 

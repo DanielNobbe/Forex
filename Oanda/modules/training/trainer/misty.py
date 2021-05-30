@@ -137,7 +137,7 @@ def misty():
     dt = [2*retrieval.gran_to_sec['D'], retrieval.gran_to_sec['D']]
     inputs, targets = retrieval.history.retrieve_training_data(args, dt, only_close=True)
     random = False
-    train_loader, val_loader, test_loader = retrieval.build_dataset(inputs, targets, val_split=0.4, test_split=0.1, random=random)
+    train_loader, val_loader, test_loader = retrieval.build_dataloader(inputs, targets, val_split=0.4, test_split=0.1, random=random)
 
     # Define model
     hidden_sizes = [8]

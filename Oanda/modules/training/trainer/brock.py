@@ -147,7 +147,7 @@ def brock():
     rnd_split = True
     batch_size = 32
     shuffle = True
-    train_loader, val_loader, test_loader = retrieval.build_dataset(inputs, targets, 
+    train_loader, val_loader, test_loader = retrieval.build_dataloader(inputs, targets, 
             val_split=0.4, test_split=0.1, rnd_split=rnd_split, shuffle=shuffle,
             batch_size=batch_size, num_workers=8)
     print(f"Train/val/test size: {len(train_loader)}/{len(val_loader)}/{len(test_loader)}")

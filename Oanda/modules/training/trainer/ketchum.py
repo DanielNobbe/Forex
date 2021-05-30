@@ -171,7 +171,7 @@ def main_rnn():
     random_split = True
     batch_size = 32
     print("inputs: ", len(inputs))
-    train_loader, val_loader, test_loader = retrieval.build_dataset(inputs, targets,
+    train_loader, val_loader, test_loader = retrieval.build_dataloader(inputs, targets,
             val_split=0.4, test_split=0.1, rnd_split=random_split, batch_size=batch_size, num_workers=8,)
     print(f"Train/val/test size: {len(train_loader)*batch_size}/{len(val_loader)*batch_size}/{len(test_loader)*batch_size}")
     print("Total data size: ", (len(train_loader)+len(val_loader)+len(test_loader))*batch_size)
