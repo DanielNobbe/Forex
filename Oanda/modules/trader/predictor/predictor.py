@@ -69,17 +69,20 @@ class Predictor():
         with open(relative_path) as file:
             mcfg = yaml.full_load(file)
 
-        model = cls.build_model(mcfg)
+        soft_margin = cfg['retrieval']['soft_margin']*cfg['retrieval']['soft_gran']
+
+        model = cls.build_model(mcfg, soft_margin)
         pt_path = cfg['model']['pt_path']
         pt_models_folder = "pre-trained-models"
         pt_path = os.path.join(pt_models_folder, pt_path)
 
-        predictor = Predictor(model, pretrained_path=pt_path, soft_margin=0.2*gran_to_sec['D'])
+
+        predictor = Predictor(model, pretrained_path=pt_path, soft_margin=soft_margin)
 
         return predictor
 
     @classmethod
-    def build_model(cls, mcfg):
+    def build_model(cls, mcfg, soft_margin):
         """
         Builds a model using a model config dict. Extracts the necessary
         arguments from the `mcfg` dict, and uses these to initialise a
@@ -99,7 +102,7 @@ class Predictor():
         model_type = ARCHITECTURES[arch['model_type']]
         model_args = arch['args']
 
-        model = model_type(**model_args, dt_settings=dt, instrument=instrument)
+        model = model_type(**model_args, dt_settings=dt, instrument=instrument, soft_margin=soft_margin)
 
         return model
 
