@@ -12,7 +12,7 @@ from modules.info.retrieval import gran_to_sec
 from modules.trader.predictor import Predictor
 from modules.training.models import markov_kernel
 import modules.info.retrieval as retrieval
-# from libs.API.WorkingFunctions import ReadableOutput
+# from libs.API.working_functions import ReadableOutput
 
 # This does not work, because the args are not updated between runs
 from apscheduler.triggers.date import DateTrigger # Keyword 'date': use when you want to run the job just once at a certain point of time

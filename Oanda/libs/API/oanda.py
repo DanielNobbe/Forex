@@ -27,7 +27,7 @@ from oandapyV20.endpoints import pricing
 from oandapyV20.endpoints import trades
 from oandapyV20.endpoints import transactions
 from oandapyV20.exceptions import StreamTerminated
-from libs.API.WorkingFunctions import readable_output
+from libs.API.working_functions import readable_output
 
 # =============================================================================
 # Functions

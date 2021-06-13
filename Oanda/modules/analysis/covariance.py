@@ -4,8 +4,8 @@ Check for delayed correlation between Forex
 """
 
 from datetime import datetime, timedelta
-from libs.API.Oanda import InstrumentsCandles, AccountInstruments
-from libs.API.WorkingFunctions import ReadableOutput
+from libs.API.oanda import InstrumentsCandles, AccountInstruments
+from libs.API.working_functions import ReadableOutput
 import numpy as np
 import time
 

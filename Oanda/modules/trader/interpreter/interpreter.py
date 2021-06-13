@@ -3,9 +3,9 @@ The Interpreter handles all trades. It receives predictions from a
 Predictor, and decides whether to, and how much to trade.
 """
 
-from libs.API.Oanda import OrdersOrderCreate, PositionsPositionDetails
-from libs.API.Orders import MarketOrder, filter_dict
-from libs.API.WorkingFunctions import readable_output
+from libs.API.oanda import OrdersOrderCreate, PositionsPositionDetails
+from libs.API.orders import MarketOrder, filter_dict
+from libs.API.working_functions import readable_output
 
 import yaml
 import sys, os
