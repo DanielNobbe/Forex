@@ -21,6 +21,15 @@ from pdb import set_trace
 
 def evaluate(val_dataloader, model, loss_fn, test=False):
     """
+    Evaluates model on the `val_dataloader` for its accuracy. It uses
+    the `loss_fn` to compute the losses of the `model` outputs.
+    Args:
+        `val_dataloader`: Dataloader for evaluation
+        `model`: The model to evaluate
+        `loss_fn`: Loss function to use for evaluation
+        `test`: If True, prints as if testing.
+    Returns:
+        Evaluated accuracy
     NOTE: Last value in input should be most recent
     TODO: Make this work for batched inputs
     """
@@ -49,21 +58,31 @@ def evaluate(val_dataloader, model, loss_fn, test=False):
 
         accuracy = (target_direction == direction)
         accuracies.append(accuracy.item())
-        # directions.append(direction.item())
         target_directions.append(target_direction.item())
-    # balance = 1-1/(np.sum(directions))
-    # print(len(directions), np.sum(directions), directions)
+
     disbalance = np.sum(target_directions)/len(target_directions)
-    # if math.isnan(disbalance):
-        # set_trace()
     accuracy = np.mean(accuracies)
     string = "Test" if test else "Validation"
     print(f"\n{string}: average loss {np.mean(losses)}, accuracy {accuracy*100} %, disbalance in eval set {disbalance}\n")
-    # Good number for disbalance is close to zero, much less than 1
     return accuracy
-    # print([direction == target_direction for direction, target_direction in zip(directions, target_directions)])
 
 def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, loss_fn, no_epochs, min_epochs, save_path, model_notes):
+    """
+    Trains the given model, with regular validation and final testing.
+    Args:
+        `model`: The model to train
+        `train_dataloader`: Dataloader for training samples
+        `val_dataloader`: Dataloader for validation samples
+        `test_dataloader`: Dataloader for test samples
+        `optimizer`: Optimizer to use for training, should be initialised 
+            with the model parameters already.
+        `loss_fn`: Loss function to use.
+        `no_epochs`: Number of epochs to run training for.
+        `min_epochs`: Minimum number of epochs before early stopping can
+            end training.
+        'save_path`: Path to save model to.
+        `model_notes`: Extra notes to save in the saved model.
+    """
     losses = []
     final_losses = []
     val_accuracy = 0 
@@ -95,9 +114,6 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
                             break
     test_acc = evaluate(test_dataloader, model, loss_fn, test=True)
 
-    # training_notes = input("Please enter some information about training: ")
-    
-
     notes = f"{model_notes} \nTest accuracy: {test_acc}"
 
     save_dict = {'state_dict': model.state_dict(), 'dt_settings': model.dt_settings, 'notes': notes}
@@ -105,25 +121,20 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
     torch.save(save_dict, save_path)
 
     print(f"Max loss is {max(losses)}, mean loss is {np.mean(losses)}")
-    # print(f"Max final loss is {max(final_losses)}, mean loss is {np.mean(final_losses)}")
-
-# def 
 
 def build_model(mcfg, dt=None):
-
+    """
+    Builds a model from a model config file.
+    """
     instrument = mcfg['instrument']
 
     if dt is None:
         dt_descr = mcfg['dt_settings']
         dt = retrieval.build_dt(dt_descr)
 
-    # hidden_sizes = [8]
-    # model = markov_kernel.MarkovKernel(2, hidden_sizes, 1, dt_settings=dt, instrument=instrument)
-    
     arch = mcfg['architecture']
     model_type = ARCHITECTURES[arch['model_type']]
     model_args = arch['args']
-
 
     model = model_type(**model_args, dt_settings=dt, instrument=instrument)
 
