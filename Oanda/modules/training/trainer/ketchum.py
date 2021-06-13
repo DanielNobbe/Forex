@@ -19,6 +19,15 @@ from textwrap import dedent
 
 def evaluate(val_dataloader, model, loss_fn, test=False):
     """
+    Evaluates model on the `val_dataloader` for its accuracy. It uses
+    the `loss_fn` to compute the losses of the `model` outputs.
+    Args:
+        `val_dataloader`: Dataloader for evaluation
+        `model`: The model to evaluate
+        `loss_fn`: Loss function to use for evaluation
+        `test`: If True, prints as if testing.
+    Returns:
+        Evaluated accuracy
     NOTE: Last value in input should be most recent
     TODO: Make this work for batched inputs
     """
@@ -70,6 +79,25 @@ def evaluate(val_dataloader, model, loss_fn, test=False):
 
 def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, loss_fn, no_epochs, min_epochs, 
             save_path, val_interval, print_interval, early_stopping_min_acc = 0.54):
+    """
+    Trains the given model, with regular validation and final testing.
+    Args:
+        `model`: The model to train
+        `train_dataloader`: Dataloader for training samples
+        `val_dataloader`: Dataloader for validation samples
+        `test_dataloader`: Dataloader for test samples
+        `optimizer`: Optimizer to use for training, should be initialised 
+            with the model parameters already.
+        `loss_fn`: Loss function to use.
+        `no_epochs`: Number of epochs to run training for.
+        `min_epochs`: Minimum number of epochs before early stopping can
+            end training.
+        `save_path`: Path to save model to.
+        `val_interval`: Number of iterations at which to repeat validation
+        `print_interval`: Number of iterations at which to print loss.
+        `early_stopping_min_acc`: Minimum accuracy at which to allow early stopping.
+    """
+    
     losses = []
     final_losses = []
     val_accuracy = 0 
