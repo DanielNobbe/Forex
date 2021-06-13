@@ -67,6 +67,9 @@ class MarkovKernel(nn.Module):
         return f"{make_ordinal(self.input_size)} order Markov Kernel model"
     
     def forward(self, value):
+        """
+        Forward pass through the model - compute output based in `value` as input.
+        """
         assert self.dt_settings is not None, "dt_settings required for using model. Have you loaded the model correctly?"
         output = self.model(value)
         return output
