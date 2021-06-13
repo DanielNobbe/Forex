@@ -97,7 +97,7 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
         `print_interval`: Number of iterations at which to print loss.
         `early_stopping_min_acc`: Minimum accuracy at which to allow early stopping.
     """
-    
+
     losses = []
     final_losses = []
     val_accuracy = 0 
@@ -162,7 +162,8 @@ def train(model, train_dataloader, val_dataloader, test_dataloader, optimizer, l
 # def 
 
 def main_rnn():
-    """ Main function for training an RNN in a naive way.
+    """ 
+    Main function for training an RNN in a naive way.
     Extracts a limited sequence and applies RNN to it.
     Not very realistic, would be better to implement an RNN method that
     can run through the complete dataset.
