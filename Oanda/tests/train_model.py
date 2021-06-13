@@ -1,6 +1,6 @@
 """
-This file contains a training loop. Most necessary functions are in the
- "trainer" folder.
+This file contains a training loop for an RNN model. Most necessary functions 
+are in the "trainer" folder, this script is only to call those functions.
  """
 
 import sys, os
