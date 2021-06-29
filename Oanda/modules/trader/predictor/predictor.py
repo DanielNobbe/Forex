@@ -2,7 +2,6 @@
     for making predictions. 
 """
 # import training.models.markov_kernel_1n
-import modules.training.models.markov_kernel_1n as mk
 from modules.training.models import *
 from modules.training.models import ARCHITECTURES as ARCHITECTURES
 import torch
