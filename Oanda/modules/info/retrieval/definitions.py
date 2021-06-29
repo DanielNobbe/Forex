@@ -22,3 +22,5 @@ gran_to_sec = {
     "D30": 2592000, # Months do not always have the same number of seconds
     # "M": "1 month candlesticks, aligned to first day of the month",
 }
+
+sec_to_gran = {value: key for key, value in gran_to_sec.items()}
