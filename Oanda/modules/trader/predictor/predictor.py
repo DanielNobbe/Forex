@@ -69,7 +69,9 @@ class Predictor():
         with open(relative_path) as file:
             mcfg = yaml.full_load(file)
 
-        soft_margin = cfg['retrieval']['soft_margin']*cfg['retrieval']['soft_gran']
+        soft_gran = cfg['retrieval']['soft_gran']
+        if isinstance(soft_gran, str): soft_gran = gran_to_sec[soft_gran]
+        soft_margin = cfg['retrieval']['soft_margin']*soft_gran
 
         model = cls.build_model(mcfg, soft_margin)
         pt_path = cfg['model']['pt_path']
