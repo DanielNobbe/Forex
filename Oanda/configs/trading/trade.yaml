@@ -21,4 +21,4 @@ limits:         # Should we include a stoploss option as well?
   amount:       10      
   # Units to trade in a single trade, 'max' to always trade to limit
 
-period:         5       # Number of seconds between each trade
+period:         20       # Number of seconds between each trade
