@@ -162,26 +162,48 @@ def retrieve_cache(args, download=False):
     
 # TODO: Check if times are utc
 
+def dt_differences(dt):
+    dt = sorted(dt, reverse=True) # has to be in right order
+    differences = [time - dt[index+1] for index, time in enumerate(dt[:-1])] 
+    if differences.count(differences[0]) == len(differences):
+        # this means all values are the same
+        if all([difference in gran_to_sec.values() for difference in differences]):
+            # This means we can use a granularity to retrieve info,
+            # but only if the granularity is the same everywhere
+            # TODO: Make this compatible with using multiple different gran-
+            # ularities to retrieve the data.
+            granularity = sec_to_gran[differences[0]]
+            return granularity
+    return False
+    
+
+
+
 def retrieve_inference_data(
     instrument,
     dt = [ 2*gran_to_sec['D'], gran_to_sec['D']  ], # time before target in seconds to return values for
     soft_retrieve = True,
     soft_margin = 3000,
     only_close = True,
-    realtime=False,
+    realtime = False,
     skip_wknd = True,
     ):
     # Same as for training, except only one sequence (and full one at that)
     # and no target value. Last dt should be now
     now = datetime.datetime.now().timestamp()
     earliest_time = now - (dt[0] - dt[-1]) - 8*gran_to_sec['D'] # Allow for max three weekends to be skipped
-    # earliest_time = now - (dt[0] - dt[-1]) # First dt should be earliest, final dt should be latest
     
     args = HistoryArgs()
     args.instrument = instrument
     args.start_time = earliest_time
-    args.granularity = 'S5' # Shortest option
-    args.max_count = 1e9
+    granularity = dt_differences(dt)
+    args.granularity = granularity if granularity else 'S5' # Shortest option
+    args.max_count = len(dt)*4 if granularity else 5e8 # Multiply by two in case we go into a weekend
+    print(f"Max count is {args.max_count}")
+    # TODO: Handle weekends better here - probably we can predict how many weekends we will encounter
+    # or we could already skip the weekends in the dt itself, separately from the loop that adds values
+    # to the sequence
+
     if realtime: # Don't save cache if running in real time
         cache = download_history(args.instrument, args.start_time, args.granularity, args.max_count)
     else:
@@ -189,9 +211,8 @@ def retrieve_inference_data(
 
     timedict = cache.timedict
 
-    # values = []
-    values = [0]*len(dt)
     dt.sort(reverse=False)
+    values = [0]*len(dt)
     offset = 0
     for idx, delta in enumerate(dt):
         time = now + dt[-1]
@@ -216,14 +237,14 @@ def retrieve_inference_data(
                     value = None
                     values[-idx] = value # Having None here will prevent it from being added
                 continue
-            # check if h_key not too far away
-            # timedict[h_time] if h_time in timedict else timedict[min(timedict.keys(), key=lambda k: abs(k-h_time))]
         else:
             value = timedict.get(h_time, None)
         if value is not None and only_close:
             value = value[-1] # final value is close value
         values[-idx] = value
     
+    new_now = datetime.datetime.now().timestamp()
+    print(f"Retrieval took {new_now-now} seconds.")
     return torch.tensor(values)
 
 def retrieve_training_data(
