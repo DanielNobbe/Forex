@@ -7,7 +7,7 @@ path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, path)
 
 from libs.API import *
-from modules.trader.interpreter import Interpreter, VariableSafe
+from modules.trader.interpreter import Interpreter
 from modules.info.retrieval import gran_to_sec
 from modules.trader.predictor import Predictor
 from modules.training.models import markov_kernel
