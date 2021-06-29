@@ -13,6 +13,10 @@ import modules.info.retrieval as retrieval
 import torch
 
 def Test(inputt):
+    """
+    Initialises a predictor and calls it as a test.
+    WARNING: Has not been tested with latest version of the Predictor class.
+    """
     # predictor = TestMarkovPredictor()
     # print(predictor.model_type)
     # print(predictor.predict())

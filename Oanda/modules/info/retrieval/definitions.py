@@ -1,3 +1,7 @@
+"""
+Contains all granularities that the OandaV20 API natively uses,
+and maps them to seconds for internal use for us.
+"""
 gran_to_sec = {
     "S5": 5,
     "S10": 10,

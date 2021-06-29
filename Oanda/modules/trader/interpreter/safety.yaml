@@ -1,3 +1,5 @@
+# Safety config file. Currently lists all supported currency pairs.
+# A pair should only be added permanently when it has been tested.
 allowed_pairs: [
   'EUR_USD',
   # Update the buy/sell limits when adding new currency pair!

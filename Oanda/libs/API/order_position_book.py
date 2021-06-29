@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from libs.API.Oanda import InstrumentsOrderBook, InstrumentsPositionBook
+from libs.API.oanda import InstrumentsOrderBook, InstrumentsPositionBook
 
 'Orderbook and Positionbook are published every 20 minutes'
 'The formula is used for the most recent'

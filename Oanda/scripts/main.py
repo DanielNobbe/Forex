@@ -12,7 +12,7 @@ from modules.info.retrieval import gran_to_sec
 from modules.trader.predictor import Predictor
 from modules.training.models import markov_kernel
 import modules.info.retrieval as retrieval
-# from libs.API.WorkingFunctions import ReadableOutput
+# from libs.API.working_functions import ReadableOutput
 
 # This does not work, because the args are not updated between runs
 from apscheduler.triggers.date import DateTrigger # Keyword 'date': use when you want to run the job just once at a certain point of time
@@ -86,12 +86,20 @@ with open(relative_path) as file:
 # TODO: Make scheduler stop on error
 
 def handle_job_error(scheduler, event):
+    """
+    Handles an error. At this moment only shuts down the scheduler
+    on any exception.
+    """
     if event.exception:
         print("Exception raised during job, terminating..")
         scheduler.shutdown(wait=False)
         return
 
 def start_scheduler():
+    """
+    Function for starting the scheduler. Initialises the trading job,
+    and adds an error listener.
+    """
     access_token = API_CONFIG[cfg['account_type']]['access_token']
     accountID = API_CONFIG[cfg['account_type']]['accountID']
 
@@ -120,6 +128,11 @@ def start_scheduler():
     return sched
 
 def main():
+    """
+    Main trading loop. Starts a job scheduler, which repeatedly makes 
+    a trade. Loop ends when scheduler ends or when keyboard interrupt
+    has been made.
+    """
 
     sched = start_scheduler()
     try:

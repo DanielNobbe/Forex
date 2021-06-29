@@ -1,6 +1,6 @@
 """
-This file contains a training loop. Most necessary functions are in the
- "trainer" folder.
+This file contains a training loop for markov kernel models. Most necessary 
+functions are in the "trainer" folder, this script only calls them.
  """
 
 import sys, os

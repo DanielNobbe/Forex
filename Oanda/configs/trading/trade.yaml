@@ -1,24 +1,22 @@
-instrument:     'EUR_USD'
-# dt_settings:
-#   granularity:    'D' # use a string to use default granularity, check history.py (TODO!)
-#   no_samples:     3 # Number of previous samples with granularity to use (TODO!)
-  # gap:            0   # Gap between last sample and target/prediction. Leave out or set zero to have same gap as granularity
-  # Or can we take this from the model? I think so
-
+# Settings file for trading
+instrument:     'EUR_USD' # Instrument to trade
 model:
-  config_file:  'model.yaml' # Config file name inside configs/models/. '.yaml' is optional TODO!
-  pt_path:      'markov3n_[8]_M1_i0.pt' # Pretrained file path. '.pt' is optional, but this argument is not.
+  # Model configuration. Should refer to a config file and pretrained model file
+  config_file:  'model.yaml' # Config file name inside configs/models/. 
+  pt_path:      'markov2n_[8]_M1_i0.pt' # Pretrained file path. '.pt' is optional, but this argument is not.
 
 account_type:   'demo'      # Options: 'demo' or 'real'
 
 retrieval:
+  # Retrieval settings for retrieving the model input
   soft_margin:  0.2     # Or should we include this in the model config?
   soft_gran:    'D'     # Include to use a standard granularity. Will be multiplied with soft_margin
 
-limits:         # Should we include a stoploss option as well?
+limits:         
+  # Trade limit settings. Determines how large the position can be, and how much we buy/sell per trade
   upper_bound:  500     # Max number of units to own
   lower_bound:  -500    # Max number of units to go short on
   amount:       10      
-  # Units to trade in a single trade, 'max' to always trade to limit
+  # Value to trade in a single trade, 'max' to always trade to limit
 
 period:         20       # Number of seconds between each trade
