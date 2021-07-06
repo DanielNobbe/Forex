@@ -14,8 +14,8 @@ class MarketClosedError(Exception):
 
     def __str__(self):
         return f"Could not retrieve enough candlesticks to make a prediction, "\
-            "but it seems this is not due to a too tight soft margin. "\
-                "Probably the markets are closed. {self.message}"
+            f"but it seems this is not due to a too tight soft margin. "\
+                f"Probably the markets are closed. \n    {self.message}"
 
 class MissingSamplesError(Exception):
     """
@@ -30,6 +30,6 @@ class MissingSamplesError(Exception):
 
     def __str__(self):
         return f"Could not retrieve enough candlesticks to make a prediction. " \
-        "This could be due to the markets being closed. Try to allow (a larger) "\
-            "soft margin for retrieval. {self.message}"
+        f"This could be due to the markets being closed, or due to a too tight soft margin"\
+            f" for retrieval.\n    {self.message}"
   
