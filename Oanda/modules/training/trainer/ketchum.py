@@ -214,9 +214,9 @@ def main_rnn():
             # by finding the closest sample (using index and giving a guess?)
     hidden_size = 8 # Simple RNN needs same hidden size as output
     # which will hamper performance quite a bit.
-    # model = RNN.OurRNN(dt_settings=dt, input_size=1, hidden_size=hidden_size,
+    # model = rnn.OurRNN(dt_settings=dt, input_size=1, hidden_size=hidden_size,
     #              batch_first=True)
-    model = RNN.CandleLSTM(instrument=ret_args.instrument, dt_settings=dt, input_size=1, hidden_size=hidden_size,
+    model = rnn.CandleLSTM(instrument=ret_args.instrument, dt_settings=dt, input_size=1, hidden_size=hidden_size,
                  batch_first=True, num_layers=3)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
