@@ -6,6 +6,7 @@ from libs.API import API_CONFIG
 from .definitions import *
 from .tools import *
 from .classes import *
+from .exceptions import *
 
 # import datetime
 import matplotlib.pyplot as plt
@@ -266,6 +267,12 @@ def retrieve_inference_data(
 
     timedict = cache.timedict
 
+    #### Only for testing for issue #20
+    skip_wknd = False
+    soft_retrieve = False
+    realtime=True
+    ####
+
     dt.sort(reverse=False)
     values = [0]*len(dt)
     offset = 0
@@ -280,14 +287,8 @@ def retrieve_inference_data(
                 value = timedict[h_key]
             else:
                 if realtime:
-                    # TODO : Move this error handling to a higher level
-                    raise ValueError(
-                            "Can not run this model right now, "
-                            "the required data is not available. "
-                            "This can (for instance) be caused by "
-                            "running a model that requires data from "
-                            "yesterday while no trading "
-                            "happened yesterday.")
+                    # TODO : Make this a MarketClosedError
+                    raise MarketClosedError()
                 else:
                     value = None
                     values[-idx] = value # Having None here will prevent it from being added
@@ -297,7 +298,10 @@ def retrieve_inference_data(
         if value is not None and only_close:
             value = value[-1] # final value is close value
         values[-idx] = value
-    
+    if all([value is None for value in values]):
+        raise MissingSamplesError()
+    # TODO: If all values are None, make this a MarketClosedError
+
     new_now = datetime.datetime.now().timestamp()
     print(f"Retrieval took {new_now-now} seconds.")
     return torch.tensor(values)
