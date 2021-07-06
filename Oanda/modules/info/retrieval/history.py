@@ -299,6 +299,8 @@ def retrieve_inference_data(
             value = value[-1] # final value is close value
         values[-idx] = value
     if all([value is None for value in values]):
+        raise MarketClosedError()
+    elif None in values:
         raise MissingSamplesError()
     # TODO: If all values are None, make this a MarketClosedError
 
