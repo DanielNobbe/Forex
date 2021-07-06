@@ -105,24 +105,13 @@ def start_scheduler():
 
     instrument = cfg["instrument"]
 
-    # print("API config: ", API_CONFIG)
-
-    # predictor = build_predictor(cfg) # build predictor for next timestep
     predictor = Predictor.build_from_cfg(cfg)
-    # print(TransactionsTransactionsSinceID(access_token, accountID, params={"id": "20"})[0])
 
     # Interpreter is called to handle trades. Should it be called the trader?
-    # Inter = Interpreter(access_token, accountID, instrument)
     Inter = Interpreter((accountID, access_token), cfg, predictor)
     sched = BackgroundScheduler()
     interval = cfg['period']
     sched.add_job(Inter.perform_trade, args=(), trigger='interval', seconds=interval) 
-
-    # sched.add_job(Inter.perform_trade, args=(access_token, accountID, predictor, Inter), trigger='interval', seconds=interval) 
-
-    
-    # TODO: FOr #20, add handler for the new history errors
-
 
     error_handler = partial(handle_job_error, sched)
     sched.add_listener(error_handler, EVENT_JOB_ERROR)
