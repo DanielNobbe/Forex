@@ -6,6 +6,7 @@ from libs.API import API_CONFIG
 from .definitions import *
 from .tools import *
 from .classes import *
+from .exceptions import *
 
 # import datetime
 import matplotlib.pyplot as plt
@@ -14,6 +15,7 @@ import matplotlib.pyplot as plt
 import re
 import os, sys
 import torch
+
 # from collections import OrderedDict
 # from itertools import islice
 # from sortedcontainers import SortedDict
@@ -265,12 +267,16 @@ def retrieve_inference_data(
         cache = retrieve_cache(args, download=True)
 
     timedict = cache.timedict
-
-    dt.sort(reverse=False)
-    values = [0]*len(dt)
+    dt.sort(reverse=True)
+    values = [None]*len(dt)
     offset = 0
-    for idx, delta in enumerate(dt):
-        time = now + dt[-1]
+    time = now + dt[-1] 
+    # This is the time to which all dt entries are relative. 
+    # i.e. the time the target value or prediction will be, which during
+    # realtime inference should be in the future, while the current value
+    # corresponds to the last input into the model.
+
+    for idx, delta in enumerate(dt): # starting at earliest, ending at latest sample. values list reflects this order
         h_time = time - delta - offset# This results in the final h_time being now
         if skip_wknd:
             h_time, offset = skip_weekend(h_time, time, delta, offset)
@@ -280,24 +286,32 @@ def retrieve_inference_data(
                 value = timedict[h_key]
             else:
                 if realtime:
-                    # TODO : Move this error handling to a higher level
-                    raise ValueError(
-                            "Can not run this model right now, "
-                            "the required data is not available. "
-                            "This can (for instance) be caused by "
-                            "running a model that requires data from "
-                            "yesterday while no trading "
-                            "happened yesterday.")
+                    raise MarketClosedError(f"Values: {values}\n"
+                            f"    current time: {unix_to_date(now)}\n"
+                            f"    target time: {unix_to_date(time)}\n"
+                            f"    earliest time: {unix_to_date(time-max(dt))}\n"
+                            f"    soft margin: {int(soft_margin*soft_retrieve)} s")
                 else:
                     value = None
-                    values[-idx] = value # Having None here will prevent it from being added
+                    values[idx] = value
                 continue
         else:
             value = timedict.get(h_time, None)
         if value is not None and only_close:
             value = value[-1] # final value is close value
-        values[-idx] = value
-    
+        values[idx] = value
+    if all([value is None for value in values]):
+        raise MarketClosedError(f"Values: {values}\n"
+                            f"    current time: {unix_to_date(now)}\n"
+                            f"    target time: {unix_to_date(time)}\n"
+                            f"    earliest time: {unix_to_date(time-max(dt))}\n"
+                            f"    soft margin: {int(soft_margin*soft_retrieve)} s") 
+    elif None in values:
+        raise MissingSamplesError(f"Values: {values}\n"
+                            f"    current time: {unix_to_date(now)}\n"
+                            f"    target time: {unix_to_date(time)}\n"
+                            f"    earliest time: {unix_to_date(time-max(dt))}\n"
+                            f"    soft margin: {int(soft_margin*soft_retrieve)} s")
     new_now = datetime.datetime.now().timestamp()
     print(f"Retrieval took {new_now-now} seconds.")
     return torch.tensor(values)
