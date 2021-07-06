@@ -120,6 +120,10 @@ def start_scheduler():
 
     # sched.add_job(Inter.perform_trade, args=(access_token, accountID, predictor, Inter), trigger='interval', seconds=interval) 
 
+    
+    # TODO: FOr #20, add handler for the new history errors
+
+
     error_handler = partial(handle_job_error, sched)
     sched.add_listener(error_handler, EVENT_JOB_ERROR)
 
