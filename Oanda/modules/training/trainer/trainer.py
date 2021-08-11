@@ -15,8 +15,18 @@ import yaml
 
 from modules.training.models import ARCHITECTURES as ARCHITECTURES
 
+# for signal handler/keyboard interrupt
+import signal
+import sys
+
 from pdb import set_trace
 # Imports all models, can be changed for efficiency
+
+def signal_handler(signal, frame):
+    print('You pressed Ctrl+C!')
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 
 def evaluate(val_dataloader, model, loss_fn, test=False):
