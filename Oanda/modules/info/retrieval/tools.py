@@ -179,7 +179,8 @@ def unix_to_date(t):
     Convert unix timestamp to datetime object.
     """
     time = datetime.datetime.fromtimestamp(t)
-    return time
+    day = weekday(t)
+    return f"{time} ({day})"
 
 def weekday(t):
     """

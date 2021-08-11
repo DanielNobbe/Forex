@@ -6,6 +6,7 @@ Predictor, and decides whether to, and how much to trade.
 from libs.API.oanda import OrdersOrderCreate, PositionsPositionDetails
 from libs.API.orders import MarketOrder, filter_dict
 from libs.API.working_functions import readable_output
+from modules.info.retrieval.exceptions import *
 
 import yaml
 import sys, os
@@ -190,7 +191,11 @@ class Interpreter():
 
         TODO: Predictor returns latest closing value, rather than real current value. 
         """
-        prediction, latest_value = self.predictor()
+        try:
+            prediction, latest_value = self.predictor()
+        except (MissingSamplesError,MarketClosedError) as e:
+            print(f"{type(e).__name__}: {e}\nCancelled this trade.")
+            return
         self.trade(prediction, latest_value)
 
     def trade(self, prediction, latest_value):
