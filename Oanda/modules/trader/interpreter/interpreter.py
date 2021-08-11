@@ -3,12 +3,13 @@ The Interpreter handles all trades. It receives predictions from a
 Predictor, and decides whether to, and how much to trade.
 """
 
-from libs.API.oanda import OrdersOrderCreate, PositionsPositionDetails
+from libs.API.oanda import OrdersOrderCreate, PositionsPositionDetails, AccountDetails
 from libs.API.orders import MarketOrder, filter_dict
 from libs.API.working_functions import readable_output
 
 import yaml
 import sys, os
+import time
 
 # Import safety config
 this_path = os.path.relpath(__file__+'/../')
@@ -16,6 +17,9 @@ with open(this_path + "/safety.yaml") as file:
     int_cfg = yaml.full_load(file)
 
 allowed_pairs = int_cfg['allowed_pairs']
+
+class MissingRepsonseException(Exception):
+    pass
 
 class Interpreter():
     """
@@ -53,6 +57,8 @@ class Interpreter():
         self.instrument = cfg['instrument']
         self.config = cfg
         self.predictor = predictor
+        
+        self.lastTransactionID = AccountDetails(self.access_token, self.accountID)[1]['lastTransactionID']
 
         self.upper_bound = cfg['limits']['upper_bound']
         self.lower_bound = cfg['limits']['lower_bound']
@@ -193,7 +199,7 @@ class Interpreter():
         prediction, latest_value = self.predictor()
         self.trade(prediction, latest_value)
 
-    def trade(self, prediction, latest_value):
+    def trade(self, prediction, latest_value, wait=3, tries=5):
         """
         Perform a trade, using the prediction given by the predictor.
         Calls prepare_trade method to make decisions, then uses API
@@ -202,7 +208,9 @@ class Interpreter():
             prediction: Predicted value that target currency of instrument
                 will have in the future. How much time in the future is defined 
                 by predictor.
-            latest_value: Latest value of instrument.            
+            latest_value: Latest value of instrument.    
+            wait: Amount of seconds between tries of submitting the trade to Oanda.
+            tries: Amount of tries to submit the trade to Oanda
         """
         self.update_position(latest_value)
         buy_or_sell_allowed, amount = self.prepare_trade(latest_value, prediction)
@@ -220,9 +228,20 @@ class Interpreter():
         filter_dict(data)
         
         print(readable_output(data))
+        
         try:
-            OrdersOrderCreate(self.access_token, self.accountID, data=data)
-            print("Bought ", units, " ", self.instrument, " value of trade: ", units*latest_value)
+            for i in range(tries):
+                if i < tries:
+                    raise MissingRepsonseException
+                if self.lastTransactionID == AccountDetails(self.access_token, self.accountID)[1]['lastTransactionID']:
+                    OrdersOrderCreate(self.access_token, self.accountID, data=data)
+                    time.sleep(wait)
+                else:
+                    print("Bought ", units, " ", self.instrument, " value of trade: ", units*latest_value)
+                    break
+        except MissingRepsonseException:
+            print("Order was NOT received, value of trade: ", units*latest_value)
+            print("Error: Order was not received by Oanda")
         except Exception as e:
             print("Order was NOT accepted, value of trade: ", units*latest_value)
             print("Error: ", e)
