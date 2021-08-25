@@ -3,13 +3,16 @@ The Interpreter handles all trades. It receives predictions from a
 Predictor, and decides whether to, and how much to trade.
 """
 
+from pdb import set_trace
 from libs.API.oanda import OrdersOrderCreate, PositionsPositionDetails
 from libs.API.orders import MarketOrder, filter_dict
 from libs.API.working_functions import readable_output
 from modules.info.retrieval.exceptions import *
+import numpy as np
 
 import yaml
 import sys, os
+from copy import deepcopy
 
 # Import safety config
 this_path = os.path.relpath(__file__+'/../')
@@ -42,7 +45,7 @@ class Interpreter():
         price: Latest retrieved price of instrument, value of 1 unit
             (base currency) in the target currency
     """
-    def __init__(self, credentials: tuple, cfg: dict, predictor: object):
+    def __init__(self, credentials: tuple, cfg: dict, predictor: object, rand_strat=False):
         """
         Args:
             credentials: credentials tuple, with first entry accountID
@@ -69,7 +72,13 @@ class Interpreter():
             "Add to interpreter.yaml after updating safety rules. "
             "Note that base currencies other than EUR do not work "
             "with default buy/sell limits.")
-    
+        self.rand_strat = rand_strat
+        if rand_strat:
+            print("WARNING: Bypassing model to randomly select buying/selling.")
+
+        self.rng = np.random.default_rng()
+
+
     def update_position(self, input_):
         """
         Updates the self.size, self.owned_value and self.price attributes
@@ -157,6 +166,9 @@ class Interpreter():
                 [1]: amount to trade. Also returned if trade is not made
         TODO: Should implement more complex strategies here
         """
+        if self.rand_strat:
+            diff = self.rng.choice([-0.1, 0.1])
+            prediction = input_ + diff
         if prediction > input_:
             # Price will go up, so we should buy
             # amount = self.amount
@@ -198,6 +210,23 @@ class Interpreter():
             return
         self.trade(prediction, latest_value)
 
+    def send_trade(self, units):
+        
+        data = deepcopy(MarketOrder)
+        data['order']['units'] = units
+        data['order']['instrument'] = self.instrument
+        data['order']['timeInForce'] = "FOK"
+        
+        filter_dict(data)
+        
+        print(readable_output(data))
+        try:
+            OrdersOrderCreate(self.access_token, self.accountID, data=data)
+            print("Bought ", units, " ", self.instrument, " value of trade: ", units*latest_value)
+        except Exception as e:
+            print("Order was NOT accepted, value of trade: ", units*latest_value)
+            print("Error: ", e)
+
     def trade(self, prediction, latest_value):
         """
         Perform a trade, using the prediction given by the predictor.
@@ -216,18 +245,19 @@ class Interpreter():
         else:
             print(f"Can not buy or sell {amount} of {self.instrument}. Returning..")
             return
+        self.send_trade(units)
 
-        data = MarketOrder
-        data['order']['units'] = units
-        data['order']['instrument'] = self.instrument
-        data['order']['timeInForce'] = "FOK"
+        # data = deepcopy(MarketOrder)
+        # data['order']['units'] = units
+        # data['order']['instrument'] = self.instrument
+        # data['order']['timeInForce'] = "FOK"
         
-        filter_dict(data)
+        # filter_dict(data)
         
-        print(readable_output(data))
-        try:
-            OrdersOrderCreate(self.access_token, self.accountID, data=data)
-            print("Bought ", units, " ", self.instrument, " value of trade: ", units*latest_value)
-        except Exception as e:
-            print("Order was NOT accepted, value of trade: ", units*latest_value)
-            print("Error: ", e)
+        # print(readable_output(data))
+        # try:
+        #     OrdersOrderCreate(self.access_token, self.accountID, data=data)
+        #     print("Bought ", units, " ", self.instrument, " value of trade: ", units*latest_value)
+        # except Exception as e:
+        #     print("Order was NOT accepted, value of trade: ", units*latest_value)
+        #     print("Error: ", e)
