@@ -68,20 +68,26 @@ class CandleLSTM(nn.Module):
             self.instrument,
             dt = self.dt_settings,
             soft_margin=self.soft_margin
-        ).unsqueeze(dim=0).unsqueeze(dim=2)
+        ).unsqueeze(dim=0)
         # TODO: Add soft margin to this automatically 
         return data
     
-    def infer(self):
+    def infer(self, test_data=None):
         """
         Runs inference. First retrieves the required samples to do 
         inference from the current time, then calls the model to 
         perform the inference.
         """
-        with torch.no_grad():
-            data = self.retrieve_for_inference()
-            # set_trace()
-            output = self.forward(data)
-            return output[-1, -1, -1] # Final value is prediction
+        if test_data is None:
+            with torch.no_grad():
+                data = self.retrieve_for_inference()
+                # set_trace()
+                output = self.forward(data)
+                return output[-1, -1], data[-1] # Final value is prediction
+        else:
+            output = self.forward(test_data.unsqueeze(dim=0))
+            return output[-1, -1], test_data[-1] # Last value of test data should be current
+
+
 
          
