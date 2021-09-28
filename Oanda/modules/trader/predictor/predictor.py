@@ -42,10 +42,13 @@ class Predictor():
 
         # if pretrained_path is not None:
         # Can not use a predictor that has not been trained
-        loaded_dict = torch.load(pretrained_path)
-        model.load_state_dict(loaded_dict['state_dict']) # Loads pretrained model
-        model.dt_settings = loaded_dict['dt_settings']
-        model.notes = loaded_dict['notes']
+        if not pretrained_path:
+            print("WARNING: Using randomly initialised model for inference!")
+        else:
+            loaded_dict = torch.load(pretrained_path)
+            model.load_state_dict(loaded_dict['state_dict']) # Loads pretrained model
+            model.dt_settings = loaded_dict['dt_settings']
+            model.notes = loaded_dict['notes']
 
     @classmethod
     def build_from_cfg(cls, cfg):
@@ -73,9 +76,10 @@ class Predictor():
         soft_margin = cfg['retrieval']['soft_margin']*soft_gran
 
         model = cls.build_model(mcfg, soft_margin)
-        pt_path = cfg['model']['pt_path']
-        pt_models_folder = "pre-trained-models"
-        pt_path = os.path.join(pt_models_folder, pt_path)
+        pt_path = cfg['model'].get('pt_path', False)
+        if pt_path:
+            pt_models_folder = "pre-trained-models"
+            pt_path = os.path.join(pt_models_folder, pt_path)
 
 
         predictor = Predictor(model, pretrained_path=pt_path, soft_margin=soft_margin)
@@ -125,10 +129,13 @@ class Predictor():
             if not isinstance(input_, list):
                 input_ = [float(input_)]
             # input should now be a list of one input value
-            input = torch.tensor(input_)
+            input_ = torch.tensor(input_)
+        input_ = input_.float()
 
-        prediction = self.model.infer(test_data = input).detach().numpy()
-        return prediction, input_
+        # prediction = self.model.infer(test_data = input).detach().numpy()
+        prediction, current_value = (thing.detach().numpy() for thing in self.model.infer(test_data = input_))
+        assert float(current_value)==float(input_[-1]), f"Input and used value are not matching!!"
+        return prediction, current_value
     
     def predict(self):
         """

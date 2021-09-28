@@ -1,0 +1,20 @@
+# Settings file for defining a model
+instrument: 'EUR_USD' # Instrument this model is built for
+dt_settings:
+  # Time series input settings for the model
+  granularity:    'D' # use a string to use default granularity, check definitions.py 
+  no_samples:     2 # Number of previous samples with granularity 
+  # gap:            0   # TODO: Gap between last sample and target/prediction. Leave out or set zero to have same gap as granularity
+architecture:
+  # Model architecture settings
+  model_type:     'lstm'
+  args:           # Model specific arguments, these differ per model type
+    input_size:   1 # Should be same as 'no_samples' for markov_kernel
+    hidden_size:  8 #[   # Should be list with the same number of entries as layers in the network
+      # 8,
+    # ]
+    num_layers: 3
+    output_size:  1   # Always 1 for time series, unless we're moving on to predicting candlesticks?
+  name:           'markov_kernel_1n_8d_2in' # optional, name for pretrained files (or should this be in training file?)
+
+

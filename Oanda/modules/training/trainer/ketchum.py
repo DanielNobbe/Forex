@@ -37,8 +37,8 @@ def evaluate(val_dataloader, model, loss_fn, test=False):
     target_directions = []
     for (values, targets) in val_dataloader:
         model.eval()
-        outputs = model(values.unsqueeze(dim=2))
-        loss = loss_fn(outputs.squeeze(2), targets)
+        outputs = model(values)
+        loss = loss_fn(outputs, targets)
         losses.append(loss.item())
         # We also want to check if it always has the right direction
         # The direction it should have is target - input
@@ -238,7 +238,6 @@ def main_rnn():
     train(model, train_loader, val_loader, test_loader, optimizer, loss_fn, no_epochs, min_epochs, save_path, val_interval, print_interval)
 
     prediction = model.infer()
-    set_trace()
     print("Prediction: ", prediction)
 
 
