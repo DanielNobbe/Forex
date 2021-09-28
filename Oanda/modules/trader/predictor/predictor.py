@@ -129,11 +129,12 @@ class Predictor():
             if not isinstance(input_, list):
                 input_ = [float(input_)]
             # input should now be a list of one input value
-            input = torch.tensor(input_)
+            input_ = torch.tensor(input_)
+        input_ = input_.float()
 
         # prediction = self.model.infer(test_data = input).detach().numpy()
-        prediction, current_value = (thing.detach().numpy() for thing in self.model.infer(test_data = input))
-        assert float(current_value)==float(input[-1]), f"Input and used value are not matching!!"
+        prediction, current_value = (thing.detach().numpy() for thing in self.model.infer(test_data = input_))
+        assert float(current_value)==float(input_[-1]), f"Input and used value are not matching!!"
         return prediction, current_value
     
     def predict(self):
