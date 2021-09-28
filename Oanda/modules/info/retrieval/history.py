@@ -15,7 +15,6 @@ import matplotlib.pyplot as plt
 import re
 import os, sys
 import torch
-
 # from collections import OrderedDict
 # from itertools import islice
 # from sortedcontainers import SortedDict
@@ -198,7 +197,96 @@ def dt_differences(dt):
             return granularity
     return False
     
+def retrieve_backtest_input(
+    data,
+    dt = [ 2*gran_to_sec['D'], gran_to_sec['D']  ], # time before target in seconds to return values for
+    soft_retrieve = True,
+    soft_margin = 3000,
+    only_close = True,
+    skip_wknd = True,
+    ):
+    """
+    
+    TODO : Move the ValueError handling to a higher level
+    """
+    # Same as for training, except only one sequence (and full one at that)
+    # and no target value. Last dt should be now
+    # now = datetime.datetime.now().timestamp()
+    now = data.index[-1].timestamp()
+    # earliest_time = now - (dt[0] - dt[-1]) - 8*gran_to_sec['D'] # Allow for max three weekends to be skipped
+    
+    # args = HistoryArgs()
+    # args.instrument = instrument
+    # args.start_time = earliest_time
+    # granularity = dt_differences(dt)
+    # args.granularity = granularity if granularity else 'S5' # Shortest option
+    # args.max_count = len(dt)*4 if granularity else 5e8 # Multiply by two in case we go into a weekend
+    # print(f"Max count is {args.max_count}")
+    # TODO: Handle weekends better here - probably we can predict how many weekends we will encounter
+    # or we could already skip the weekends in the dt itself, separately from the loop that adds values
+    # to the sequence
 
+    # if realtime: # Don't save cache if running in real time
+    #     cache = download_history(args.instrument, args.start_time, args.granularity, args.max_count)
+    # else:
+    #     cache = retrieve_cache(args, download=True)
+
+    # timedict = cache.timedict
+    time_list = [time.timestamp() for time in data.index]
+    if only_close:
+        value_list = data.Close
+    else:
+        
+        raise NotImplementedError()
+    timedict = SortedDict(zip(time_list, value_list))
+    dt.sort(reverse=False)
+    values = [None]*len(dt)
+    offset = 0
+    time = now + dt[-1] 
+    # This is the time to which all dt entries are relative. 
+    # i.e. the time the target value or prediction will be, which during
+    # realtime inference should be in the future, while the current value
+    # corresponds to the last input into the model.
+
+    for idx, delta in enumerate(dt): # starting at earliest, ending at latest sample. values list reflects this order
+        h_time = time - delta - offset# This results in the final h_time being now
+        if skip_wknd:
+            h_time, offset = skip_weekend(h_time, time, delta, offset)
+        if not h_time in timedict and soft_retrieve: # Check if this works correctly
+            h_key = sd_closest(timedict, h_time)
+            if h_key - h_time < soft_margin:
+                value = timedict[h_key]
+            else:
+                # if realtime:
+                #     raise MarketClosedError(f"Values: {values}\n"
+                #             f"    current time: {unix_to_date(now)}\n"
+                #             f"    target time: {unix_to_date(time)}\n"
+                #             f"    earliest time: {unix_to_date(time-max(dt))}\n"
+                #             f"    soft margin: {int(soft_margin*soft_retrieve)} s")
+                # else:
+                value = None
+                values[idx] = value
+                continue
+        else:
+            value = timedict.get(h_time, None)
+        # if value is not None and only_close:
+        #     value = value[-1] # final value is close value
+        values[idx] = value
+    if all([value is None for value in values]):
+        raise MarketClosedError(f"Values: {values}\n"
+                            f"    current time: {unix_to_date(now)}\n"
+                            f"    target time: {unix_to_date(time)}\n"
+                            f"    earliest time: {unix_to_date(time-max(dt))}\n"
+                            f"    soft margin: {int(soft_margin*soft_retrieve)} s") 
+    elif None in values:
+        raise MissingSamplesError(f"Values: {values}\n"
+                            f"    current time: {unix_to_date(now)}\n"
+                            f"    target time: {unix_to_date(time)}\n"
+                            f"    earliest time: {unix_to_date(time-max(dt))}\n"
+                            f"    soft margin: {int(soft_margin*soft_retrieve)} s")
+    # new_now = datetime.datetime.now().timestamp()
+    # print(f"Retrieval took {new_now-now} seconds.")
+    return torch.tensor(values)
 
 
 def retrieve_inference_data(
@@ -267,7 +355,7 @@ def retrieve_inference_data(
         cache = retrieve_cache(args, download=True)
 
     timedict = cache.timedict
-    dt.sort(reverse=True)
+    dt.sort(reverse=False)
     values = [None]*len(dt)
     offset = 0
     time = now + dt[-1] 
@@ -381,7 +469,7 @@ def retrieve_training_data(
     empty = 0
 
     # dt should be in ascending order (i.e. increasing time)
-    dt.sort(reverse=False)
+    dt.sort(reverse=True)
 
     for time in list(timedict.keys()):
         # begins at earliest time
