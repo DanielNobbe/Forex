@@ -21,6 +21,14 @@ with open(this_path + "/safety.yaml") as file:
 
 allowed_pairs = int_cfg['allowed_pairs']
 
+def extract_last_entry(array):
+    try:
+        if len(array) > 0:
+            array = array[-1]
+            return extract_last_entry(array)
+    except (TypeError):
+        return array
+
 class Interpreter():
     """
     The Interpreter is an object that tracks the current portfolio,
@@ -144,6 +152,8 @@ class Interpreter():
                 print("Trade not allowed, attempting to increase debt to more than lower bound.")
                 return False, amount
    
+    
+
     def prepare_trade(self, input_, prediction):
         """
         Function used to prepare trade. Uses prediction and current value
@@ -171,7 +181,6 @@ class Interpreter():
             prediction = input_ + diff
         if prediction > input_:
             # Price will go up, so we should buy
-            # amount = self.amount
             amount = self.amount
             allowed, amount_ret = self.check_risk('buy', amount)
             assert amount == amount_ret or amount == 'max', "Mistake in check_risk function"
@@ -205,9 +214,10 @@ class Interpreter():
         """
         try:
             prediction, latest_value = self.predictor()
-        except (MissingSamplesError,MarketClosedError) as e:
+        except (MissingSamplesError, MarketClosedError) as e:
             print(f"{type(e).__name__}: {e}\nCancelled this trade.")
             return
+        latest_value = extract_last_entry(latest_value)
         self.trade(prediction, latest_value)
 
     def send_trade(self, units):
@@ -222,9 +232,9 @@ class Interpreter():
         print(readable_output(data))
         try:
             OrdersOrderCreate(self.access_token, self.accountID, data=data)
-            print("Bought ", units, " ", self.instrument, " value of trade: ", units*latest_value)
+            print("Bought ", units, " ", self.instrument, " value of trade: ", units*self.price)
         except Exception as e:
-            print("Order was NOT accepted, value of trade: ", units*latest_value)
+            print("Order was NOT accepted, value of trade: ", units*self.price)
             print("Error: ", e)
 
     def trade(self, prediction, latest_value):
