@@ -6,10 +6,14 @@ from libs.API import *
 import yaml
 import sys, os
 from modules.trader.predictor import Predictor
-
+from modules.info.retrieval import retrieve_backtest_input, MarketClosedError, MissingSamplesError
 ###
 from backtesting.test import GOOG
 from backtesting import Backtest
+
+import pandas as pd
+
+from pdb import set_trace
 
 # class interpreter_strategy(Interpreter, Strategy):
 #     ## We won't use super() for init here, since that 
@@ -68,14 +72,33 @@ class BacktestInterpreter(Interpreter):
         """
         # try:
         current_value = data.Close[-1]
-        # TODO: Modify predictor in such a way that it can be called
-        # w arguments to use predict_with_input (like predictor())
-        prediction, latest_value = self.predictor.predict_with_input(current_value)
+        current_time = data.index[-1]
+        dt_settings = self.predictor.model.dt_settings
+        ## data.Close is a list with all currently available values, 
+        # the final at -1
+        ## data.index is the list of all corresponding timestamps
+        try:
+            input_ = retrieve_backtest_input(data, dt_settings)
+        except (MarketClosedError, MissingSamplesError) as e:
+            print("Captured a MarketClosed or MissingSamples error. Continuing..")
+            # This either means there is a problem with the retrieval,
+            # or that we are at the beginning or end of the timeseries
+            return
+        ## Next step: modify what current_value is
+        # For other types of models, we need to extract a different
+        # subset of the data. This is defined by dt_settings
+        # We can use the dt_settings to extract the right data timesteps
+        # but to do that we need to know which time corresponds to each
+        # time series point. TODO: CHeck if we have this info
+        # The dataframe should be indexed with the datetime
+
+        # TODO: Use the period as specified in the trading settings
+        # TODO: Move model-specific extraction to the model definition?
+        prediction, latest_value = self.predictor.predict_with_input(input_)
         # except (MissingSamplesError,MarketClosedError) as e:
             # print(f"{type(e).__name__}: {e}\nCancelled this trade.")
             # return
         
-        ## 11/08: stopped here, should probably modify trade method
         # NOTE: Trades made in backtesting are good-till-cancelled
         
         self.trade(prediction, latest_value)
@@ -102,13 +125,15 @@ class InterpreterStrategy(Strategy):
         credentials = (accountID, access_token)
 
         predictor = Predictor.build_from_cfg(cfg)
-        rand_strat = True
+        rand_strat = False
         ## TODO: Create a function to generate a Strategy object
         # from the required combination of predictor, credentials, cfg
         self.interpreter = BacktestInterpreter(credentials, cfg, 
                                 predictor, self, rand_strat)
         # TODO: Is there a way to use the interpreter output as 
         # an indicator?
+        self.latest_time = 0
+        self.period = cfg['period']
 
     def next(self):
         # This is the core of the Strategy. We can get the latest
@@ -118,11 +143,23 @@ class InterpreterStrategy(Strategy):
         # or something like the timeseries object we already use
         # current_value = self.data.Close[-1]
         # Pass self.data to interpreter to perform a trade
-        self.interpreter.perform_trade(self.data)
+        current_time = self.data.index[-1].timestamp()
+        time_difference = current_time - self.latest_time
+        if (self.period <= time_difference < 1.2*self.period) or self.latest_time==0:
+            self.interpreter.perform_trade(self.data)
+            self.latest_time = current_time
+        elif time_difference > 1.2*self.period:
+            print(f"Trade interval much longer than specified period at {time_difference} (period: {self.period})")
+            self.interpreter.perform_trade(self.data)
+            self.latest_time = current_time
+        else:
+            return
+
+
 
 
 def main():
-    bt = Backtest(GOOG, InterpreterStrategy, cash=10_000, commission=.002)
+    bt = Backtest(GOOG, InterpreterStrategy, cash=10_000, commission=.002, trade_on_close=True)
     
     stats = bt.run()
     print(stats)
